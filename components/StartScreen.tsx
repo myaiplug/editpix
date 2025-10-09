@@ -33,7 +33,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onFileSelect }) => {
           AI-Powered Photo Editing, <span className="text-blue-400">Simplified</span>.
         </h1>
         <p className="max-w-2xl text-lg text-gray-400 md:text-xl">
-          Retouch photos, apply creative filters, or make professional adjustments using simple text prompts. No complex tools needed.
+          Retouch photos, apply creative filters, or make professional adjustments using EditPix simple AI text prompts. No complex tools needed. Use your creativity to do anything you can type out into the prompt, the sky's the limit!
         </p>
 
         <div className="mt-6 flex flex-col items-center gap-4">
