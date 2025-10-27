@@ -14,6 +14,10 @@ import AdjustmentPanel from './components/AdjustmentPanel';
 import CropPanel from './components/CropPanel';
 import { UndoIcon, RedoIcon, EyeIcon } from './components/icons';
 import StartScreen from './components/StartScreen';
+import ApiKeySetupModal from './components/ApiKeySetupModal';
+import ApiKeyGuideModal from './components/ApiKeyGuideModal';
+import SettingsModal from './components/SettingsModal';
+import { getApiKey, saveApiKey, isAdminMode as checkAdminMode } from './utils/apiKeyManager';
 
 // Helper to convert a data URL string to a File object
 const dataURLtoFile = (dataurl: string, filename: string): File => {
@@ -48,6 +52,12 @@ const App: React.FC = () => {
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
   const [aspect, setAspect] = useState<number | undefined>();
   const [isComparing, setIsComparing] = useState<boolean>(false);
+  
+  // API Key and Admin Mode state
+  const [showApiKeySetup, setShowApiKeySetup] = useState<boolean>(false);
+  const [showApiKeyGuide, setShowApiKeyGuide] = useState<boolean>(false);
+  const [showSettings, setShowSettings] = useState<boolean>(false);
+  const [isAdminModeActive, setIsAdminModeActive] = useState<boolean>(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
   const currentImage = history[historyIndex] ?? null;
@@ -55,6 +65,15 @@ const App: React.FC = () => {
 
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
+
+  // Check for API key on mount
+  useEffect(() => {
+    const apiKey = getApiKey();
+    if (!apiKey && !process.env.API_KEY) {
+      setShowApiKeySetup(true);
+    }
+    setIsAdminModeActive(checkAdminMode());
+  }, []);
 
   // Effect to create and revoke object URLs safely for the current image
   useEffect(() => {
@@ -277,6 +296,26 @@ const App: React.FC = () => {
     }
   };
 
+  // API Key handlers
+  const handleApiKeySubmit = useCallback((apiKey: string) => {
+    saveApiKey(apiKey);
+    setShowApiKeySetup(false);
+  }, []);
+
+  const handleShowGuide = useCallback(() => {
+    setShowApiKeySetup(false);
+    setShowApiKeyGuide(true);
+  }, []);
+
+  const handleCloseGuide = useCallback(() => {
+    setShowApiKeyGuide(false);
+    setShowApiKeySetup(true);
+  }, []);
+
+  const handleUpdateApiKey = useCallback(() => {
+    setShowApiKeySetup(true);
+  }, []);
+
   const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
     if (activeTab !== 'retouch') return;
     
@@ -427,8 +466,8 @@ const App: React.FC = () => {
                 </div>
             )}
             {activeTab === 'crop' && <CropPanel onApplyCrop={handleApplyCrop} onSetAspect={setAspect} isLoading={isLoading} isCropping={!!completedCrop?.width && completedCrop.width > 0} />}
-            {activeTab === 'adjust' && <AdjustmentPanel onApplyAdjustment={handleApplyAdjustment} isLoading={isLoading} />}
-            {activeTab === 'filters' && <FilterPanel onApplyFilter={handleApplyFilter} isLoading={isLoading} />}
+            {activeTab === 'adjust' && <AdjustmentPanel onApplyAdjustment={handleApplyAdjustment} isLoading={isLoading} isAdminMode={isAdminModeActive} />}
+            {activeTab === 'filters' && <FilterPanel onApplyFilter={handleApplyFilter} isLoading={isLoading} isAdminMode={isAdminModeActive} />}
         </div>
         
         <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
@@ -495,10 +534,35 @@ const App: React.FC = () => {
   
   return (
     <div className="min-h-screen text-gray-100 flex flex-col">
-      <Header />
+      <Header 
+        onSettingsClick={() => setShowSettings(true)} 
+        isAdminMode={isAdminModeActive}
+      />
       <main className={`flex-grow w-full max-w-[1600px] mx-auto p-4 md:p-8 flex justify-center ${currentImage ? 'items-start' : 'items-center'}`}>
         {renderContent()}
       </main>
+      
+      {/* Modals */}
+      <ApiKeySetupModal 
+        isOpen={showApiKeySetup}
+        onSubmit={handleApiKeySubmit}
+        onShowGuide={handleShowGuide}
+      />
+      <ApiKeyGuideModal 
+        isOpen={showApiKeyGuide}
+        onClose={handleCloseGuide}
+      />
+      <SettingsModal 
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        onUpdateApiKey={handleUpdateApiKey}
+        onShowGuide={() => {
+          setShowSettings(false);
+          setShowApiKeyGuide(true);
+        }}
+        onAdminModeChange={setIsAdminModeActive}
+        isAdminMode={isAdminModeActive}
+      />
     </div>
   );
 };

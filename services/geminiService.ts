@@ -4,6 +4,7 @@
 */
 
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import { getApiKey } from "../utils/apiKeyManager";
 
 // Helper function to convert a File object to a Gemini API Part
 const fileToPart = async (file: File): Promise<{ inlineData: { mimeType: string; data: string; } }> => {
@@ -76,7 +77,11 @@ export const generateEditedImage = async (
     hotspot: { x: number, y: number }
 ): Promise<string> => {
     console.log('Starting generative edit at:', hotspot);
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+    const apiKey = getApiKey() || process.env.API_KEY || '';
+    if (!apiKey) {
+        throw new Error('No API key configured. Please set up your API key in settings.');
+    }
+    const ai = new GoogleGenAI({ apiKey });
     
     const originalImagePart = await fileToPart(originalImage);
     const prompt = `You are an expert photo editor AI. Your task is to perform a natural, localized edit on the provided image based on the user's request.
@@ -115,7 +120,11 @@ export const generateFilteredImage = async (
     filterPrompt: string,
 ): Promise<string> => {
     console.log(`Starting filter generation: ${filterPrompt}`);
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+    const apiKey = getApiKey() || process.env.API_KEY || '';
+    if (!apiKey) {
+        throw new Error('No API key configured. Please set up your API key in settings.');
+    }
+    const ai = new GoogleGenAI({ apiKey });
     
     const originalImagePart = await fileToPart(originalImage);
     const prompt = `You are an expert photo editor AI. Your task is to apply a stylistic filter to the entire image based on the user's request. Do not change the composition or content, only apply the style.
@@ -151,7 +160,11 @@ export const generateAdjustedImage = async (
     adjustmentPrompt: string,
 ): Promise<string> => {
     console.log(`Starting global adjustment generation: ${adjustmentPrompt}`);
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+    const apiKey = getApiKey() || process.env.API_KEY || '';
+    if (!apiKey) {
+        throw new Error('No API key configured. Please set up your API key in settings.');
+    }
+    const ai = new GoogleGenAI({ apiKey });
     
     const originalImagePart = await fileToPart(originalImage);
     const prompt = `You are an expert photo editor AI. Your task is to perform a natural, global adjustment to the entire image based on the user's request.
