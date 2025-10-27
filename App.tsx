@@ -11,6 +11,7 @@ import Header from './components/Header';
 import Spinner from './components/Spinner';
 import FilterPanel from './components/FilterPanel';
 import AdjustmentPanel from './components/AdjustmentPanel';
+import RetouchPanel from './components/RetouchPanel';
 import CropPanel from './components/CropPanel';
 import { UndoIcon, RedoIcon, EyeIcon } from './components/icons';
 import StartScreen from './components/StartScreen';
@@ -442,28 +443,14 @@ const App: React.FC = () => {
         
         <div className="w-full">
             {activeTab === 'retouch' && (
-                <div className="flex flex-col items-center gap-4">
-                    <p className="text-md text-gray-400">
-                        {editHotspot ? 'Great! Now describe your localized edit below.' : 'Click an area on the image to make a precise edit.'}
-                    </p>
-                    <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="w-full flex items-center gap-2">
-                        <input
-                            type="text"
-                            value={prompt}
-                            onChange={(e) => setPrompt(e.target.value)}
-                            placeholder={editHotspot ? "e.g., 'change my shirt color to blue'" : "First click a point on the image"}
-                            className="flex-grow bg-gray-800 border border-gray-700 text-gray-200 rounded-lg p-5 text-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition w-full disabled:cursor-not-allowed disabled:opacity-60"
-                            disabled={isLoading || !editHotspot}
-                        />
-                        <button 
-                            type="submit"
-                            className="bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-5 px-8 text-lg rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-px active:scale-95 active:shadow-inner disabled:from-blue-800 disabled:to-blue-700 disabled:shadow-none disabled:cursor-not-allowed disabled:transform-none"
-                            disabled={isLoading || !prompt.trim() || !editHotspot}
-                        >
-                            Generate
-                        </button>
-                    </form>
-                </div>
+                <RetouchPanel 
+                  onApplyRetouch={handleGenerate}
+                  isLoading={isLoading}
+                  isAdminMode={isAdminModeActive}
+                  editHotspot={editHotspot}
+                  prompt={prompt}
+                  onPromptChange={setPrompt}
+                />
             )}
             {activeTab === 'crop' && <CropPanel onApplyCrop={handleApplyCrop} onSetAspect={setAspect} isLoading={isLoading} isCropping={!!completedCrop?.width && completedCrop.width > 0} />}
             {activeTab === 'adjust' && <AdjustmentPanel onApplyAdjustment={handleApplyAdjustment} isLoading={isLoading} isAdminMode={isAdminModeActive} />}
