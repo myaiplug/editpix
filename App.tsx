@@ -11,9 +11,14 @@ import Header from './components/Header';
 import Spinner from './components/Spinner';
 import FilterPanel from './components/FilterPanel';
 import AdjustmentPanel from './components/AdjustmentPanel';
+import RetouchPanel from './components/RetouchPanel';
 import CropPanel from './components/CropPanel';
 import { UndoIcon, RedoIcon, EyeIcon } from './components/icons';
 import StartScreen from './components/StartScreen';
+import ApiKeySetupModal from './components/ApiKeySetupModal';
+import ApiKeyGuideModal from './components/ApiKeyGuideModal';
+import SettingsModal from './components/SettingsModal';
+import { getApiKey, saveApiKey, isAdminMode as checkAdminMode } from './utils/apiKeyManager';
 
 // Helper to convert a data URL string to a File object
 const dataURLtoFile = (dataurl: string, filename: string): File => {
@@ -48,6 +53,12 @@ const App: React.FC = () => {
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
   const [aspect, setAspect] = useState<number | undefined>();
   const [isComparing, setIsComparing] = useState<boolean>(false);
+  
+  // API Key and Admin Mode state
+  const [showApiKeySetup, setShowApiKeySetup] = useState<boolean>(false);
+  const [showApiKeyGuide, setShowApiKeyGuide] = useState<boolean>(false);
+  const [showSettings, setShowSettings] = useState<boolean>(false);
+  const [isAdminModeActive, setIsAdminModeActive] = useState<boolean>(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
   const currentImage = history[historyIndex] ?? null;
@@ -55,6 +66,15 @@ const App: React.FC = () => {
 
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
+
+  // Check for API key on mount
+  useEffect(() => {
+    const apiKey = getApiKey();
+    if (!apiKey && !process.env.API_KEY) {
+      setShowApiKeySetup(true);
+    }
+    setIsAdminModeActive(checkAdminMode());
+  }, []);
 
   // Effect to create and revoke object URLs safely for the current image
   useEffect(() => {
@@ -277,6 +297,26 @@ const App: React.FC = () => {
     }
   };
 
+  // API Key handlers
+  const handleApiKeySubmit = useCallback((apiKey: string) => {
+    saveApiKey(apiKey);
+    setShowApiKeySetup(false);
+  }, []);
+
+  const handleShowGuide = useCallback(() => {
+    setShowApiKeySetup(false);
+    setShowApiKeyGuide(true);
+  }, []);
+
+  const handleCloseGuide = useCallback(() => {
+    setShowApiKeyGuide(false);
+    setShowApiKeySetup(true);
+  }, []);
+
+  const handleUpdateApiKey = useCallback(() => {
+    setShowApiKeySetup(true);
+  }, []);
+
   const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
     if (activeTab !== 'retouch') return;
     
@@ -403,32 +443,18 @@ const App: React.FC = () => {
         
         <div className="w-full">
             {activeTab === 'retouch' && (
-                <div className="flex flex-col items-center gap-4">
-                    <p className="text-md text-gray-400">
-                        {editHotspot ? 'Great! Now describe your localized edit below.' : 'Click an area on the image to make a precise edit.'}
-                    </p>
-                    <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="w-full flex items-center gap-2">
-                        <input
-                            type="text"
-                            value={prompt}
-                            onChange={(e) => setPrompt(e.target.value)}
-                            placeholder={editHotspot ? "e.g., 'change my shirt color to blue'" : "First click a point on the image"}
-                            className="flex-grow bg-gray-800 border border-gray-700 text-gray-200 rounded-lg p-5 text-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition w-full disabled:cursor-not-allowed disabled:opacity-60"
-                            disabled={isLoading || !editHotspot}
-                        />
-                        <button 
-                            type="submit"
-                            className="bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-5 px-8 text-lg rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-px active:scale-95 active:shadow-inner disabled:from-blue-800 disabled:to-blue-700 disabled:shadow-none disabled:cursor-not-allowed disabled:transform-none"
-                            disabled={isLoading || !prompt.trim() || !editHotspot}
-                        >
-                            Generate
-                        </button>
-                    </form>
-                </div>
+                <RetouchPanel 
+                  onApplyRetouch={handleGenerate}
+                  isLoading={isLoading}
+                  isAdminMode={isAdminModeActive}
+                  editHotspot={editHotspot}
+                  prompt={prompt}
+                  onPromptChange={setPrompt}
+                />
             )}
             {activeTab === 'crop' && <CropPanel onApplyCrop={handleApplyCrop} onSetAspect={setAspect} isLoading={isLoading} isCropping={!!completedCrop?.width && completedCrop.width > 0} />}
-            {activeTab === 'adjust' && <AdjustmentPanel onApplyAdjustment={handleApplyAdjustment} isLoading={isLoading} />}
-            {activeTab === 'filters' && <FilterPanel onApplyFilter={handleApplyFilter} isLoading={isLoading} />}
+            {activeTab === 'adjust' && <AdjustmentPanel onApplyAdjustment={handleApplyAdjustment} isLoading={isLoading} isAdminMode={isAdminModeActive} />}
+            {activeTab === 'filters' && <FilterPanel onApplyFilter={handleApplyFilter} isLoading={isLoading} isAdminMode={isAdminModeActive} />}
         </div>
         
         <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
@@ -495,10 +521,35 @@ const App: React.FC = () => {
   
   return (
     <div className="min-h-screen text-gray-100 flex flex-col">
-      <Header />
+      <Header 
+        onSettingsClick={() => setShowSettings(true)} 
+        isAdminMode={isAdminModeActive}
+      />
       <main className={`flex-grow w-full max-w-[1600px] mx-auto p-4 md:p-8 flex justify-center ${currentImage ? 'items-start' : 'items-center'}`}>
         {renderContent()}
       </main>
+      
+      {/* Modals */}
+      <ApiKeySetupModal 
+        isOpen={showApiKeySetup}
+        onSubmit={handleApiKeySubmit}
+        onShowGuide={handleShowGuide}
+      />
+      <ApiKeyGuideModal 
+        isOpen={showApiKeyGuide}
+        onClose={handleCloseGuide}
+      />
+      <SettingsModal 
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        onUpdateApiKey={handleUpdateApiKey}
+        onShowGuide={() => {
+          setShowSettings(false);
+          setShowApiKeyGuide(true);
+        }}
+        onAdminModeChange={setIsAdminModeActive}
+        isAdminMode={isAdminModeActive}
+      />
     </div>
   );
 };
