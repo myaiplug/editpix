@@ -29,7 +29,7 @@ const ApiKeySetupModal: React.FC<ApiKeySetupModalProps> = ({ onSubmit, onShowGui
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
       <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-2xl shadow-2xl max-w-lg w-full p-8 animate-scale-in">
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-full mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-[#7C4DFF] to-[#00C2FF] rounded-full mb-4">
             <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
             </svg>
@@ -45,7 +45,7 @@ const ApiKeySetupModal: React.FC<ApiKeySetupModalProps> = ({ onSubmit, onShowGui
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="AIza..."
-              className="w-full bg-gray-800 border border-gray-600 text-gray-200 rounded-lg p-4 pr-12 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
+              className="w-full bg-gray-800 border border-gray-600 text-gray-200 rounded-lg p-4 pr-12 text-base focus:ring-2 focus:ring-[#7C4DFF] focus:outline-none transition"
               autoFocus
             />
             <button
@@ -66,14 +66,14 @@ const ApiKeySetupModal: React.FC<ApiKeySetupModalProps> = ({ onSubmit, onShowGui
             </button>
           </div>
 
-          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+          <div className="bg-[#7C4DFF]/10 border border-[#7C4DFF]/20 rounded-lg p-4">
             <div className="flex items-start gap-2">
-              <svg className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-[#7C4DFF] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <div className="text-sm text-blue-300">
+              <div className="text-sm text-[#7C4DFF]">
                 <p className="font-semibold mb-1">Your API key is stored securely</p>
-                <p className="text-blue-400/80">It's encrypted and saved locally in your browser for 24 hours only.</p>
+                <p className="text-[#7C4DFF]/80">It's encrypted and saved locally in your browser for 24 hours only.</p>
               </div>
             </div>
           </div>
@@ -81,7 +81,7 @@ const ApiKeySetupModal: React.FC<ApiKeySetupModalProps> = ({ onSubmit, onShowGui
           <button
             type="submit"
             disabled={!apiKey.trim()}
-            className="w-full bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-4 px-6 rounded-lg transition-all duration-300 shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5 active:scale-95 disabled:from-gray-700 disabled:to-gray-600 disabled:shadow-none disabled:cursor-not-allowed disabled:transform-none text-base"
+            className="w-full bg-gradient-to-br from-[#7C4DFF] to-[#00C2FF] text-white font-bold py-4 px-6 rounded-lg transition-all duration-300 shadow-lg shadow-[#7C4DFF]/30 hover:shadow-xl hover:shadow-[#7C4DFF]/40 hover:-translate-y-0.5 active:scale-95 disabled:from-gray-700 disabled:to-gray-600 disabled:shadow-none disabled:cursor-not-allowed disabled:transform-none text-base"
           >
             Save API Key
           </button>

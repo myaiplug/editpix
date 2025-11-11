@@ -72,7 +72,7 @@ const ApiKeyGuideModal: React.FC<ApiKeyGuideModalProps> = ({ isOpen, onClose }) 
 
         <div className="p-6 space-y-8">
           {/* What is an API Key */}
-          <section className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-xl p-6">
+          <section className="bg-gradient-to-br from-[#7C4DFF]/10 to-[#00C2FF]/10 border border-[#7C4DFF]/20 rounded-xl p-6">
             <div className="flex items-start gap-4 mb-4">
               <div className="bg-blue-500/20 p-3 rounded-lg">
                 <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -90,10 +90,10 @@ const ApiKeyGuideModal: React.FC<ApiKeyGuideModalProps> = ({ isOpen, onClose }) 
           </section>
 
           {/* Why You Need It */}
-          <section className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-xl p-6">
+          <section className="bg-gradient-to-br from-[#7C4DFF]/10 to-[#00C2FF]/10 border border-[#7C4DFF]/20 rounded-xl p-6">
             <div className="flex items-start gap-4 mb-4">
-              <div className="bg-purple-500/20 p-3 rounded-lg">
-                <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="bg-[#7C4DFF]/20 p-3 rounded-lg">
+                <svg className="w-6 h-6 text-[#7C4DFF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
@@ -169,7 +169,7 @@ const ApiKeyGuideModal: React.FC<ApiKeyGuideModalProps> = ({ isOpen, onClose }) 
           </section>
 
           {/* Helpful Resources */}
-          <section className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-xl p-6">
+          <section className="bg-gradient-to-br from-[#FFB84D]/10 to-[#FF9900]/10 border border-[#FFB84D]/20 rounded-xl p-6">
             <h3 className="text-xl font-bold text-white mb-4">Helpful Resources</h3>
             <div className="space-y-3">
               <a
