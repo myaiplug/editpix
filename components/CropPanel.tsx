@@ -42,7 +42,7 @@ const CropPanel: React.FC<CropPanelProps> = ({ onApplyCrop, onSetAspect, isLoadi
             disabled={isLoading}
             className={`px-4 py-2 rounded-md text-base font-semibold transition-all duration-200 active:scale-95 disabled:opacity-50 ${
               activeAspect === name 
-              ? 'bg-gradient-to-br from-blue-600 to-blue-500 text-white shadow-md shadow-blue-500/20' 
+              ? 'bg-gradient-to-br from-[#7C4DFF] to-[#00C2FF] text-white shadow-md shadow-[#7C4DFF]/20' 
               : 'bg-white/10 hover:bg-white/20 text-gray-200'
             }`}
           >
@@ -54,7 +54,7 @@ const CropPanel: React.FC<CropPanelProps> = ({ onApplyCrop, onSetAspect, isLoadi
       <button
         onClick={onApplyCrop}
         disabled={isLoading || !isCropping}
-        className="w-full max-w-xs mt-2 bg-gradient-to-br from-green-600 to-green-500 text-white font-bold py-4 px-6 rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-green-500/20 hover:shadow-xl hover:shadow-green-500/40 hover:-translate-y-px active:scale-95 active:shadow-inner text-base disabled:from-green-800 disabled:to-green-700 disabled:shadow-none disabled:cursor-not-allowed disabled:transform-none"
+        className="w-full max-w-xs mt-2 bg-gradient-to-br from-[#FFB84D] to-[#FF9900] text-white font-bold py-4 px-6 rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-[#FFB84D]/20 hover:shadow-xl hover:shadow-[#FFB84D]/40 hover:-translate-y-px active:scale-95 active:shadow-inner text-base disabled:from-gray-600 disabled:to-gray-700 disabled:shadow-none disabled:cursor-not-allowed disabled:transform-none"
       >
         Apply Crop
       </button>

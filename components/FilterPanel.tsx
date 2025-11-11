@@ -60,10 +60,10 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onApplyFilter, isLoading, isA
       key={preset.name}
       onClick={() => handlePresetClick(preset.prompt)}
       disabled={isLoading}
-      className={`w-full text-center bg-white/10 border ${isAdmin ? 'border-purple-500/30' : 'border-transparent'} text-gray-200 font-semibold py-3 px-4 rounded-md transition-all duration-200 ease-in-out hover:bg-white/20 ${isAdmin ? 'hover:border-purple-500/50' : 'hover:border-white/20'} active:scale-95 text-base disabled:opacity-50 disabled:cursor-not-allowed ${selectedPresetPrompt === preset.prompt ? 'ring-2 ring-offset-2 ring-offset-gray-800 ring-blue-500' : ''}`}
+      className={`w-full text-center bg-white/10 border ${isAdmin ? 'border-[#7C4DFF]/30' : 'border-transparent'} text-gray-200 font-semibold py-3 px-4 rounded-md transition-all duration-200 ease-in-out hover:bg-white/20 ${isAdmin ? 'hover:border-[#7C4DFF]/50' : 'hover:border-white/20'} active:scale-95 text-base disabled:opacity-50 disabled:cursor-not-allowed ${selectedPresetPrompt === preset.prompt ? 'ring-2 ring-offset-2 ring-offset-gray-800 ring-[#7C4DFF]' : ''}`}
     >
       {preset.name}
-      {isAdmin && <span className="ml-2 text-xs text-purple-400">★</span>}
+      {isAdmin && <span className="ml-2 text-xs text-[#7C4DFF]">★</span>}
     </button>
   );
 
@@ -82,12 +82,12 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onApplyFilter, isLoading, isA
       )}
 
       {isAdminMode && showMoreFilters && (
-        <div className="border-t border-purple-500/20 pt-4 mt-2">
+        <div className="border-t border-[#7C4DFF]/20 pt-4 mt-2">
           <div className="flex items-center justify-center gap-2 mb-3">
-            <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-[#7C4DFF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
             </svg>
-            <span className="text-sm font-bold text-purple-400">Admin Exclusive Filters</span>
+            <span className="text-sm font-bold text-[#7C4DFF]">Admin Exclusive Filters</span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 animate-fade-in">
             {adminPresets.map(preset => renderPresetButton(preset, true))}
@@ -108,7 +108,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onApplyFilter, isLoading, isA
         value={customPrompt}
         onChange={handleCustomChange}
         placeholder="Or describe a custom filter (e.g., '80s synthwave glow')"
-        className="flex-grow bg-gray-800 border border-gray-600 text-gray-200 rounded-lg p-4 focus:ring-2 focus:ring-blue-500 focus:outline-none transition w-full disabled:cursor-not-allowed disabled:opacity-60 text-base"
+        className="flex-grow bg-gray-800 border border-gray-600 text-gray-200 rounded-lg p-4 focus:ring-2 focus:ring-[#7C4DFF] focus:outline-none transition w-full disabled:cursor-not-allowed disabled:opacity-60 text-base"
         disabled={isLoading}
       />
       
@@ -116,7 +116,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onApplyFilter, isLoading, isA
         <div className="animate-fade-in flex flex-col gap-4 pt-2">
           <button
             onClick={handleApply}
-            className="w-full bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-4 px-6 rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-px active:scale-95 active:shadow-inner text-base disabled:from-blue-800 disabled:to-blue-700 disabled:shadow-none disabled:cursor-not-allowed disabled:transform-none"
+            className="w-full bg-gradient-to-br from-[#7C4DFF] to-[#00C2FF] text-white font-bold py-4 px-6 rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-[#7C4DFF]/20 hover:shadow-xl hover:shadow-[#7C4DFF]/40 hover:-translate-y-px active:scale-95 active:shadow-inner text-base disabled:from-gray-600 disabled:to-gray-700 disabled:shadow-none disabled:cursor-not-allowed disabled:transform-none"
             disabled={isLoading || !activePrompt.trim()}
           >
             Apply Filter

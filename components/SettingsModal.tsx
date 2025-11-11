@@ -78,7 +78,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* API Key Section */}
           <section>
             <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-[#7C4DFF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
               </svg>
               API Key Management
@@ -112,7 +112,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   onUpdateApiKey();
                   onClose();
                 }}
-                className="w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 hover:bg-blue-700 active:scale-95 text-sm flex items-center justify-center gap-2"
+                className="w-full bg-[#7C4DFF] text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 hover:bg-[#6B3EEF] active:scale-95 text-sm flex items-center justify-center gap-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -135,7 +135,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Admin Mode Section */}
           <section className="border-t border-gray-700 pt-6">
             <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-[#7C4DFF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
               Admin Mode
@@ -143,14 +143,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
             {isAdminMode ? (
               <div className="space-y-3">
-                <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-4">
-                  <div className="flex items-center gap-2 text-purple-400 mb-1">
+                <div className="bg-[#7C4DFF]/10 border border-[#7C4DFF]/20 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-[#7C4DFF] mb-1">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                     <span className="font-semibold text-sm">Admin Mode Enabled</span>
                   </div>
-                  <p className="text-sm text-purple-400/80">Access to advanced features and video generation</p>
+                  <p className="text-sm text-[#7C4DFF]/80">Access to advanced features and video generation</p>
                 </div>
                 <button
                   onClick={handleDisableAdmin}
@@ -164,7 +164,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 {!showAdminInput ? (
                   <button
                     onClick={() => setShowAdminInput(true)}
-                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 hover:from-purple-700 hover:to-pink-700 active:scale-95 text-sm flex items-center justify-center gap-2"
+                    className="w-full bg-gradient-to-r from-[#7C4DFF] to-[#00C2FF] text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-[#7C4DFF]/30 active:scale-95 text-sm flex items-center justify-center gap-2"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -181,7 +181,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         setAdminError('');
                       }}
                       placeholder="Enter admin password"
-                      className="w-full bg-gray-800 border border-gray-600 text-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none transition"
+                      className="w-full bg-gray-800 border border-gray-600 text-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-[#7C4DFF] focus:outline-none transition"
                       autoFocus
                     />
                     {adminError && (
@@ -190,7 +190,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     <div className="flex gap-2">
                       <button
                         type="submit"
-                        className="flex-1 bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200 hover:bg-purple-700 active:scale-95 text-sm"
+                        className="flex-1 bg-[#7C4DFF] text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200 hover:bg-[#6B3EEF] active:scale-95 text-sm"
                       >
                         Submit
                       </button>

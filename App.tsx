@@ -417,10 +417,10 @@ const App: React.FC = () => {
 
             {displayHotspot && !isLoading && activeTab === 'retouch' && (
                 <div 
-                    className="absolute rounded-full w-6 h-6 bg-blue-500/50 border-2 border-white pointer-events-none -translate-x-1/2 -translate-y-1/2 z-10"
+                    className="absolute rounded-full w-6 h-6 bg-[#7C4DFF]/50 border-2 border-white pointer-events-none -translate-x-1/2 -translate-y-1/2 z-10"
                     style={{ left: `${displayHotspot.x}px`, top: `${displayHotspot.y}px` }}
                 >
-                    <div className="absolute inset-0 rounded-full w-6 h-6 animate-ping bg-blue-400"></div>
+                    <div className="absolute inset-0 rounded-full w-6 h-6 animate-ping bg-[#7C4DFF]"></div>
                 </div>
             )}
         </div>
@@ -432,7 +432,7 @@ const App: React.FC = () => {
                     onClick={() => setActiveTab(tab)}
                     className={`w-full capitalize font-semibold py-3 px-5 rounded-md transition-all duration-200 text-base ${
                         activeTab === tab 
-                        ? 'bg-gradient-to-br from-blue-500 to-cyan-400 text-white shadow-lg shadow-cyan-500/40' 
+                        ? 'bg-gradient-to-br from-[#7C4DFF] to-[#00C2FF] text-white shadow-lg shadow-[#7C4DFF]/40' 
                         : 'text-gray-300 hover:text-white hover:bg-white/10'
                     }`}
                 >
@@ -510,7 +510,7 @@ const App: React.FC = () => {
 
             <button 
                 onClick={handleDownload}
-                className="flex-grow sm:flex-grow-0 ml-auto bg-gradient-to-br from-green-600 to-green-500 text-white font-bold py-3 px-5 rounded-md transition-all duration-300 ease-in-out shadow-lg shadow-green-500/20 hover:shadow-xl hover:shadow-green-500/40 hover:-translate-y-px active:scale-95 active:shadow-inner text-base"
+                className="flex-grow sm:flex-grow-0 ml-auto bg-gradient-to-br from-[#FFB84D] to-[#FF9900] text-white font-bold py-3 px-5 rounded-md transition-all duration-300 ease-in-out shadow-lg shadow-[#FFB84D]/20 hover:shadow-xl hover:shadow-[#FFB84D]/40 hover:-translate-y-px active:scale-95 active:shadow-inner text-base"
             >
                 Download Image
             </button>
