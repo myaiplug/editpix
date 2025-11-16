@@ -190,3 +190,41 @@ Output: Return ONLY the final adjusted image. Do not return text.`;
     
     return handleApiResponse(response, 'adjustment');
 };
+
+/**
+ * Generates a new image from text prompt using generative AI.
+ * @param prompt The text description of the image to generate.
+ * @param aspectRatio The aspect ratio for the generated image (e.g., '1:1', '16:9').
+ * @returns A promise that resolves to the data URL of the generated image.
+ */
+export const generateImageFromText = async (
+    prompt: string,
+    aspectRatio: string = '1:1'
+): Promise<string> => {
+    console.log(`Starting image generation from text: ${prompt}, aspect ratio: ${aspectRatio}`);
+    const apiKey = getApiKey() || process.env.API_KEY || '';
+    if (!apiKey) {
+        throw new Error('No API key configured. Please set up your API key in settings.');
+    }
+    const ai = new GoogleGenAI({ apiKey });
+    
+    const fullPrompt = `Generate a high-quality, photorealistic image based on this description: "${prompt}"
+
+Requirements:
+- Create a visually stunning, detailed image that captures the essence of the description
+- The image should be in ${aspectRatio} aspect ratio
+- Use professional composition, lighting, and color grading
+- Ensure the image is cohesive and aesthetically pleasing
+
+Output: Return ONLY the generated image. Do not return text.`;
+    const textPart = { text: fullPrompt };
+
+    console.log('Sending text prompt to the model for image generation...');
+    const response: GenerateContentResponse = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image-preview',
+        contents: { parts: [textPart] },
+    });
+    console.log('Received response from model for image generation.', response);
+    
+    return handleApiResponse(response, 'image generation');
+};
