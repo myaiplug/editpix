@@ -14,6 +14,7 @@ import AdjustmentPanel from './components/AdjustmentPanel';
 import RetouchPanel from './components/RetouchPanel';
 import CropPanel from './components/CropPanel';
 import ImageGeneratorPanel from './components/ImageGeneratorPanel';
+import ManifestBoard from './components/ManifestBoard';
 import { UndoIcon, RedoIcon, EyeIcon } from './components/icons';
 import StartScreen from './components/StartScreen';
 import ApiKeySetupModal from './components/ApiKeySetupModal';
@@ -62,6 +63,7 @@ const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [isAdminModeActive, setIsAdminModeActive] = useState<boolean>(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [showManifestBoard, setShowManifestBoard] = useState<boolean>(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
   const currentImage = history[historyIndex] ?? null;
@@ -607,7 +609,8 @@ const App: React.FC = () => {
       {isAuthenticated && (
         <>
           <Header 
-            onSettingsClick={() => setShowSettings(true)} 
+            onSettingsClick={() => setShowSettings(true)}
+            onManifestBoardClick={() => setShowManifestBoard(true)}
             isAdminMode={isAdminModeActive}
           />
           <main className={`flex-grow w-full max-w-[1600px] mx-auto p-4 md:p-8 flex justify-center ${currentImage ? 'items-start' : 'items-center'}`}>
@@ -635,6 +638,9 @@ const App: React.FC = () => {
             onAdminModeChange={setIsAdminModeActive}
             isAdminMode={isAdminModeActive}
           />
+          {showManifestBoard && (
+            <ManifestBoard onClose={() => setShowManifestBoard(false)} />
+          )}
         </>
       )}
     </div>
