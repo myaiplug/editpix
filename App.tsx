@@ -18,6 +18,7 @@ import StartScreen from './components/StartScreen';
 import ApiKeySetupModal from './components/ApiKeySetupModal';
 import ApiKeyGuideModal from './components/ApiKeyGuideModal';
 import SettingsModal from './components/SettingsModal';
+import PasswordProtectionModal from './components/PasswordProtectionModal';
 import { getApiKey, saveApiKey, isAdminMode as checkAdminMode } from './utils/apiKeyManager';
 
 // Helper to convert a data URL string to a File object
@@ -59,6 +60,7 @@ const App: React.FC = () => {
   const [showApiKeyGuide, setShowApiKeyGuide] = useState<boolean>(false);
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [isAdminModeActive, setIsAdminModeActive] = useState<boolean>(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
   const currentImage = history[historyIndex] ?? null;
@@ -69,6 +71,17 @@ const App: React.FC = () => {
 
   // Check for API key on mount
   useEffect(() => {
+    // Check password protection first
+    const appPassword = process.env.APP_PASSWORD;
+    const isAuth = sessionStorage.getItem('editpix_authenticated') === 'true';
+    
+    if (appPassword && !isAuth) {
+      setIsAuthenticated(false);
+      return;
+    }
+    
+    setIsAuthenticated(true);
+    
     const apiKey = getApiKey();
     if (!apiKey && !process.env.API_KEY) {
       setShowApiKeySetup(true);
@@ -317,6 +330,14 @@ const App: React.FC = () => {
     setShowApiKeySetup(true);
   }, []);
 
+  const handleAuthenticate = useCallback(() => {
+    setIsAuthenticated(true);
+    const apiKey = getApiKey();
+    if (!apiKey && !process.env.API_KEY) {
+      setShowApiKeySetup(true);
+    }
+  }, []);
+
   const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
     if (activeTab !== 'retouch') return;
     
@@ -521,35 +542,45 @@ const App: React.FC = () => {
   
   return (
     <div className="min-h-screen text-gray-100 flex flex-col">
-      <Header 
-        onSettingsClick={() => setShowSettings(true)} 
-        isAdminMode={isAdminModeActive}
+      {/* Password Protection Modal */}
+      <PasswordProtectionModal 
+        isOpen={!isAuthenticated}
+        onAuthenticate={handleAuthenticate}
       />
-      <main className={`flex-grow w-full max-w-[1600px] mx-auto p-4 md:p-8 flex justify-center ${currentImage ? 'items-start' : 'items-center'}`}>
-        {renderContent()}
-      </main>
       
-      {/* Modals */}
-      <ApiKeySetupModal 
-        isOpen={showApiKeySetup}
-        onSubmit={handleApiKeySubmit}
-        onShowGuide={handleShowGuide}
-      />
-      <ApiKeyGuideModal 
-        isOpen={showApiKeyGuide}
-        onClose={handleCloseGuide}
-      />
-      <SettingsModal 
-        isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
-        onUpdateApiKey={handleUpdateApiKey}
-        onShowGuide={() => {
-          setShowSettings(false);
-          setShowApiKeyGuide(true);
-        }}
-        onAdminModeChange={setIsAdminModeActive}
-        isAdminMode={isAdminModeActive}
-      />
+      {isAuthenticated && (
+        <>
+          <Header 
+            onSettingsClick={() => setShowSettings(true)} 
+            isAdminMode={isAdminModeActive}
+          />
+          <main className={`flex-grow w-full max-w-[1600px] mx-auto p-4 md:p-8 flex justify-center ${currentImage ? 'items-start' : 'items-center'}`}>
+            {renderContent()}
+          </main>
+          
+          {/* Modals */}
+          <ApiKeySetupModal 
+            isOpen={showApiKeySetup}
+            onSubmit={handleApiKeySubmit}
+            onShowGuide={handleShowGuide}
+          />
+          <ApiKeyGuideModal 
+            isOpen={showApiKeyGuide}
+            onClose={handleCloseGuide}
+          />
+          <SettingsModal 
+            isOpen={showSettings}
+            onClose={() => setShowSettings(false)}
+            onUpdateApiKey={handleUpdateApiKey}
+            onShowGuide={() => {
+              setShowSettings(false);
+              setShowApiKeyGuide(true);
+            }}
+            onAdminModeChange={setIsAdminModeActive}
+            isAdminMode={isAdminModeActive}
+          />
+        </>
+      )}
     </div>
   );
 };
