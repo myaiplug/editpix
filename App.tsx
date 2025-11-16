@@ -6,18 +6,21 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop';
-import { generateEditedImage, generateFilteredImage, generateAdjustedImage } from './services/geminiService';
+import { generateEditedImage, generateFilteredImage, generateAdjustedImage, generateImageFromText } from './services/geminiService';
 import Header from './components/Header';
 import Spinner from './components/Spinner';
 import FilterPanel from './components/FilterPanel';
 import AdjustmentPanel from './components/AdjustmentPanel';
 import RetouchPanel from './components/RetouchPanel';
 import CropPanel from './components/CropPanel';
+import ImageGeneratorPanel from './components/ImageGeneratorPanel';
+import ManifestBoard from './components/ManifestBoard';
 import { UndoIcon, RedoIcon, EyeIcon } from './components/icons';
 import StartScreen from './components/StartScreen';
 import ApiKeySetupModal from './components/ApiKeySetupModal';
 import ApiKeyGuideModal from './components/ApiKeyGuideModal';
 import SettingsModal from './components/SettingsModal';
+import PasswordProtectionModal from './components/PasswordProtectionModal';
 import { getApiKey, saveApiKey, isAdminMode as checkAdminMode } from './utils/apiKeyManager';
 
 // Helper to convert a data URL string to a File object
@@ -37,7 +40,7 @@ const dataURLtoFile = (dataurl: string, filename: string): File => {
     return new File([u8arr], filename, {type:mime});
 }
 
-type Tab = 'retouch' | 'adjust' | 'filters' | 'crop';
+type Tab = 'retouch' | 'adjust' | 'filters' | 'crop' | 'generate';
 
 const App: React.FC = () => {
   const [history, setHistory] = useState<File[]>([]);
@@ -59,6 +62,8 @@ const App: React.FC = () => {
   const [showApiKeyGuide, setShowApiKeyGuide] = useState<boolean>(false);
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [isAdminModeActive, setIsAdminModeActive] = useState<boolean>(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [showManifestBoard, setShowManifestBoard] = useState<boolean>(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
   const currentImage = history[historyIndex] ?? null;
@@ -69,6 +74,17 @@ const App: React.FC = () => {
 
   // Check for API key on mount
   useEffect(() => {
+    // Check password protection first
+    const appPassword = process.env.APP_PASSWORD;
+    const isAuth = sessionStorage.getItem('editpix_authenticated') === 'true';
+    
+    if (appPassword && !isAuth) {
+      setIsAuthenticated(false);
+      return;
+    }
+    
+    setIsAuthenticated(true);
+    
     const apiKey = getApiKey();
     if (!apiKey && !process.env.API_KEY) {
       setShowApiKeySetup(true);
@@ -201,6 +217,30 @@ const App: React.FC = () => {
     }
   }, [currentImage, addImageToHistory]);
 
+  const handleGenerateImage = useCallback(async (prompt: string, aspectRatio: string) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+        const generatedImageUrl = await generateImageFromText(prompt, aspectRatio);
+        const newImageFile = dataURLtoFile(generatedImageUrl, `generated-${Date.now()}.png`);
+        
+        // If no image history, start fresh with generated image
+        if (history.length === 0) {
+          setHistory([newImageFile]);
+          setHistoryIndex(0);
+        } else {
+          addImageToHistory(newImageFile);
+        }
+    } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+        setError(`Failed to generate the image. ${errorMessage}`);
+        console.error(err);
+    } finally {
+        setIsLoading(false);
+    }
+  }, [history, addImageToHistory]);
+
   const handleApplyCrop = useCallback(() => {
     if (!completedCrop || !imgRef.current) {
         setError('Please select an area to crop.');
@@ -317,6 +357,14 @@ const App: React.FC = () => {
     setShowApiKeySetup(true);
   }, []);
 
+  const handleAuthenticate = useCallback(() => {
+    setIsAuthenticated(true);
+    const apiKey = getApiKey();
+    if (!apiKey && !process.env.API_KEY) {
+      setShowApiKeySetup(true);
+    }
+  }, []);
+
   const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
     if (activeTab !== 'retouch') return;
     
@@ -354,19 +402,49 @@ const App: React.FC = () => {
         );
     }
     
+    // Allow generate tab to be shown even without an image
+    if (!currentImageUrl && activeTab === 'generate') {
+      return (
+        <div className="w-full max-w-4xl mx-auto flex flex-col items-center gap-6 animate-fade-in">
+          <div className="text-center mb-6">
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-3">
+              AI Image Generator
+            </h2>
+            <p className="text-gray-400">Create stunning images from your imagination</p>
+          </div>
+          <ImageGeneratorPanel onGenerateImage={handleGenerateImage} isLoading={isLoading} />
+        </div>
+      );
+    }
+    
     if (!currentImageUrl) {
-      return <StartScreen onFileSelect={handleFileSelect} />;
+      return (
+        <div className="w-full max-w-4xl mx-auto flex flex-col items-center gap-6 animate-fade-in">
+          <StartScreen onFileSelect={handleFileSelect} />
+          
+          {/* Show Image Generator option on start screen */}
+          <div className="w-full text-center">
+            <p className="text-gray-400 mb-4">or</p>
+            <button
+              onClick={() => setActiveTab('generate')}
+              className="bg-gradient-to-br from-purple-600 to-pink-500 text-white font-bold py-4 px-8 rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-purple-500/20 hover:shadow-xl hover:shadow-purple-500/40 hover:-translate-y-px active:scale-95"
+            >
+              Generate Image from Text
+            </button>
+          </div>
+        </div>
+      );
     }
 
     const imageDisplay = (
-      <div className="relative">
+      <div className="relative flex items-center justify-center min-h-[300px]">
         {/* Base image is the original, always at the bottom */}
         {originalImageUrl && (
             <img
                 key={originalImageUrl}
                 src={originalImageUrl}
                 alt="Original"
-                className="w-full h-auto object-contain max-h-[60vh] rounded-xl pointer-events-none"
+                className="max-w-full max-h-[70vh] object-contain rounded-xl pointer-events-none"
             />
         )}
         {/* The current image is an overlay that fades in/out for comparison */}
@@ -376,7 +454,7 @@ const App: React.FC = () => {
             src={currentImageUrl}
             alt="Current"
             onClick={handleImageClick}
-            className={`absolute top-0 left-0 w-full h-auto object-contain max-h-[60vh] rounded-xl transition-opacity duration-200 ease-in-out ${isComparing ? 'opacity-0' : 'opacity-100'} ${activeTab === 'retouch' ? 'cursor-crosshair' : ''}`}
+            className={`absolute max-w-full max-h-[70vh] object-contain rounded-xl transition-opacity duration-200 ease-in-out ${isComparing ? 'opacity-0' : 'opacity-100'} ${activeTab === 'retouch' ? 'cursor-crosshair' : ''}`}
         />
       </div>
     );
@@ -388,14 +466,14 @@ const App: React.FC = () => {
         key={`crop-${currentImageUrl}`}
         src={currentImageUrl} 
         alt="Crop this image"
-        className="w-full h-auto object-contain max-h-[60vh] rounded-xl"
+        className="max-w-full max-h-[70vh] object-contain rounded-xl"
       />
     );
 
 
     return (
       <div className="w-full max-w-4xl mx-auto flex flex-col items-center gap-6 animate-fade-in">
-        <div className="relative w-full shadow-2xl rounded-xl overflow-hidden bg-black/20">
+        <div className="relative w-full shadow-2xl rounded-xl overflow-hidden bg-black/20 flex items-center justify-center">
             {isLoading && (
                 <div className="absolute inset-0 bg-black/70 z-30 flex flex-col items-center justify-center gap-4 animate-fade-in">
                     <Spinner />
@@ -409,7 +487,7 @@ const App: React.FC = () => {
                 onChange={c => setCrop(c)} 
                 onComplete={c => setCompletedCrop(c)}
                 aspect={aspect}
-                className="max-h-[60vh]"
+                className="max-h-[70vh]"
               >
                 {cropImageElement}
               </ReactCrop>
@@ -426,7 +504,7 @@ const App: React.FC = () => {
         </div>
         
         <div className="w-full bg-gray-800/80 border border-gray-700/80 rounded-lg p-2 flex items-center justify-center gap-2 backdrop-blur-sm">
-            {(['retouch', 'crop', 'adjust', 'filters'] as Tab[]).map(tab => (
+            {(['retouch', 'crop', 'adjust', 'filters', 'generate'] as Tab[]).map(tab => (
                  <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
@@ -436,7 +514,7 @@ const App: React.FC = () => {
                         : 'text-gray-300 hover:text-white hover:bg-white/10'
                     }`}
                 >
-                    {tab}
+                    {tab === 'generate' ? '✨ Generate' : tab}
                 </button>
             ))}
         </div>
@@ -455,6 +533,7 @@ const App: React.FC = () => {
             {activeTab === 'crop' && <CropPanel onApplyCrop={handleApplyCrop} onSetAspect={setAspect} isLoading={isLoading} isCropping={!!completedCrop?.width && completedCrop.width > 0} />}
             {activeTab === 'adjust' && <AdjustmentPanel onApplyAdjustment={handleApplyAdjustment} isLoading={isLoading} isAdminMode={isAdminModeActive} />}
             {activeTab === 'filters' && <FilterPanel onApplyFilter={handleApplyFilter} isLoading={isLoading} isAdminMode={isAdminModeActive} />}
+            {activeTab === 'generate' && <ImageGeneratorPanel onGenerateImage={handleGenerateImage} isLoading={isLoading} />}
         </div>
         
         <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
@@ -521,35 +600,49 @@ const App: React.FC = () => {
   
   return (
     <div className="min-h-screen text-gray-100 flex flex-col">
-      <Header 
-        onSettingsClick={() => setShowSettings(true)} 
-        isAdminMode={isAdminModeActive}
+      {/* Password Protection Modal */}
+      <PasswordProtectionModal 
+        isOpen={!isAuthenticated}
+        onAuthenticate={handleAuthenticate}
       />
-      <main className={`flex-grow w-full max-w-[1600px] mx-auto p-4 md:p-8 flex justify-center ${currentImage ? 'items-start' : 'items-center'}`}>
-        {renderContent()}
-      </main>
       
-      {/* Modals */}
-      <ApiKeySetupModal 
-        isOpen={showApiKeySetup}
-        onSubmit={handleApiKeySubmit}
-        onShowGuide={handleShowGuide}
-      />
-      <ApiKeyGuideModal 
-        isOpen={showApiKeyGuide}
-        onClose={handleCloseGuide}
-      />
-      <SettingsModal 
-        isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
-        onUpdateApiKey={handleUpdateApiKey}
-        onShowGuide={() => {
-          setShowSettings(false);
-          setShowApiKeyGuide(true);
-        }}
-        onAdminModeChange={setIsAdminModeActive}
-        isAdminMode={isAdminModeActive}
-      />
+      {isAuthenticated && (
+        <>
+          <Header 
+            onSettingsClick={() => setShowSettings(true)}
+            onManifestBoardClick={() => setShowManifestBoard(true)}
+            isAdminMode={isAdminModeActive}
+          />
+          <main className={`flex-grow w-full max-w-[1600px] mx-auto p-4 md:p-8 flex justify-center ${currentImage ? 'items-start' : 'items-center'}`}>
+            {renderContent()}
+          </main>
+          
+          {/* Modals */}
+          <ApiKeySetupModal 
+            isOpen={showApiKeySetup}
+            onSubmit={handleApiKeySubmit}
+            onShowGuide={handleShowGuide}
+          />
+          <ApiKeyGuideModal 
+            isOpen={showApiKeyGuide}
+            onClose={handleCloseGuide}
+          />
+          <SettingsModal 
+            isOpen={showSettings}
+            onClose={() => setShowSettings(false)}
+            onUpdateApiKey={handleUpdateApiKey}
+            onShowGuide={() => {
+              setShowSettings(false);
+              setShowApiKeyGuide(true);
+            }}
+            onAdminModeChange={setIsAdminModeActive}
+            isAdminMode={isAdminModeActive}
+          />
+          {showManifestBoard && (
+            <ManifestBoard onClose={() => setShowManifestBoard(false)} />
+          )}
+        </>
+      )}
     </div>
   );
 };

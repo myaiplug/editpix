@@ -4,22 +4,36 @@
 
 # EditPix - AI-Powered Photo Editing
 
-EditPix is a powerful, browser-based AI photo editor that uses Google's Gemini AI for advanced image manipulation. Features include precise retouching, creative filters, professional adjustments, and an admin mode with enhanced capabilities.
+EditPix is a powerful, browser-based AI photo editor that uses Google's Gemini AI for advanced image manipulation. Features include precise retouching, creative filters, professional adjustments, AI image generation, and a manifest board for creating custom compositions.
 
 View your app in AI Studio: https://ai.studio/apps/drive/15K6TLDzwyw2fKXOJrbxVYgVpM6upWe_b
 
 ## Features
 
 ### 🎨 Core Editing Tools
-- **Precise Retouching** - Click any point on your image for localized edits
-- **Creative Filters** - 8+ artistic filters (Synthwave, Anime, Noir, etc.)
-- **Professional Adjustments** - Blur backgrounds, enhance details, adjust lighting
+- **Precise Retouching** - Click any point on your image for localized edits with 12+ preset options
+- **Creative Filters** - 8+ artistic filters (Synthwave, Anime, Noir, etc.) with expandable options
+- **Professional Adjustments** - Blur backgrounds, enhance details, adjust lighting, and more
 - **Crop Tool** - Flexible cropping with aspect ratio controls
 
-### 🔐 API Key Management
-- **Secure Storage** - API keys encrypted and stored locally for 24 hours
+### ✨ AI Image Generator
+- **Text-to-Image Generation** - Create stunning images from text descriptions
+- **Aspect Ratio Selection** - Choose from Square, Portrait, Landscape, or Wide formats
+- **Example Prompts** - Get inspired with built-in example prompts
+- **Seamless Integration** - Generate images without uploading, then edit them
+
+### 🎭 Manifest Board
+- **Multi-Image Canvas** - Create compositions with up to 20 images
+- **Text Support** - Add customizable text elements to your canvas
+- **Save & Load** - Save your work and return later to continue editing
+- **Export** - Export your final composition as PNG
+- **Drag & Drop** - Easy positioning of images and text elements
+
+### 🔐 Security Features
+- **Password Protection** - Optional password protection for family testing
+- **API Key Management** - Secure encrypted storage with 24-hour expiration
 - **Educational Guide** - Built-in tutorial explaining API keys with links to 5 free providers
-- **Easy Management** - Change or remove API keys anytime via Settings
+- **Environment Variables** - Configure API keys and passwords via .env.local
 
 ### 👑 Admin Mode
 Unlock advanced features with password-protected admin mode:
@@ -34,10 +48,14 @@ Unlock advanced features with password-protected admin mode:
 ### Quick Start (No Installation)
 
 1. Open EditPix in your browser
-2. When prompted, enter your Google Gemini API key
+2. **Optional:** If password protection is enabled, enter the application password
+3. When prompted, enter your Google Gemini API key
    - Don't have one? Click "Learn how to get one" for a guided tutorial
    - Get a free key from [Google AI Studio](https://aistudio.google.com/app/apikey)
-3. Upload an image and start editing!
+4. Choose your workflow:
+   - Upload an image to edit
+   - Generate an image from text using the AI Image Generator
+   - Create a composition using the Manifest Board
 
 ### Run Locally
 
@@ -48,10 +66,12 @@ Unlock advanced features with password-protected admin mode:
    npm install
    ```
 
-2. (Optional) Set up your Google AI API key via environment variable:
+2. (Optional) Set up environment variables:
    ```bash
    cp .env.local.example .env.local
-   # Edit .env.local and add your API key
+   # Edit .env.local and configure:
+   # - GEMINI_API_KEY: Your Google Gemini API key
+   # - APP_PASSWORD: Optional password for application access (leave empty to disable)
    ```
    
    **Note:** If not set, the app will prompt you to enter your API key on first use.
@@ -84,6 +104,15 @@ The app includes a comprehensive guide to getting free API keys from:
 4. Hugging Face - Free tier available
 5. Replicate - $5 free credit
 
+## Password Protection
+
+Protect your EditPix instance with a password for family testing or limited access:
+
+1. Copy `.env.local.example` to `.env.local`
+2. Set `APP_PASSWORD=your_secure_password`
+3. Users will be prompted to enter the password before accessing the app
+4. Leave `APP_PASSWORD` empty to disable password protection
+
 ## Admin Mode
 
 Enable admin mode to access professional-grade presets and tools:
@@ -98,6 +127,24 @@ Enable admin mode to access professional-grade presets and tools:
 - **Retouch**: Professional skin retouching, blemish removal, teeth whitening
 - **Adjust**: 12 pro-level adjustments including HDR, color grading, lens correction
 - **Filters**: 4 exclusive cinematic and artistic filters
+
+## Using the Manifest Board
+
+The Manifest Board lets you create custom compositions with multiple images and text:
+
+1. Click **Manifest Board** button in the header
+2. Add images (up to 20) using the "Add Image" button
+3. Add text by clicking "Add Text" and typing your message
+4. Click elements to select and position them
+5. Use **Save** to save your work for later
+6. Use **Load** to resume a saved canvas
+7. Use **Export** to download your composition as PNG
+
+**Tips:**
+- Click and drag elements to reposition them
+- Select elements and click "Delete Selected" to remove them
+- Name your canvas for easy identification when saving
+- Saved canvases are stored in your browser's local storage
 
 ## Security & Privacy
 
