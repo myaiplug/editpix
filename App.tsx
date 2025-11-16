@@ -380,14 +380,14 @@ const App: React.FC = () => {
     }
 
     const imageDisplay = (
-      <div className="relative">
+      <div className="relative flex items-center justify-center min-h-[300px]">
         {/* Base image is the original, always at the bottom */}
         {originalImageUrl && (
             <img
                 key={originalImageUrl}
                 src={originalImageUrl}
                 alt="Original"
-                className="w-full h-auto object-contain max-h-[60vh] rounded-xl pointer-events-none"
+                className="max-w-full max-h-[70vh] object-contain rounded-xl pointer-events-none"
             />
         )}
         {/* The current image is an overlay that fades in/out for comparison */}
@@ -397,7 +397,7 @@ const App: React.FC = () => {
             src={currentImageUrl}
             alt="Current"
             onClick={handleImageClick}
-            className={`absolute top-0 left-0 w-full h-auto object-contain max-h-[60vh] rounded-xl transition-opacity duration-200 ease-in-out ${isComparing ? 'opacity-0' : 'opacity-100'} ${activeTab === 'retouch' ? 'cursor-crosshair' : ''}`}
+            className={`absolute max-w-full max-h-[70vh] object-contain rounded-xl transition-opacity duration-200 ease-in-out ${isComparing ? 'opacity-0' : 'opacity-100'} ${activeTab === 'retouch' ? 'cursor-crosshair' : ''}`}
         />
       </div>
     );
@@ -409,14 +409,14 @@ const App: React.FC = () => {
         key={`crop-${currentImageUrl}`}
         src={currentImageUrl} 
         alt="Crop this image"
-        className="w-full h-auto object-contain max-h-[60vh] rounded-xl"
+        className="max-w-full max-h-[70vh] object-contain rounded-xl"
       />
     );
 
 
     return (
       <div className="w-full max-w-4xl mx-auto flex flex-col items-center gap-6 animate-fade-in">
-        <div className="relative w-full shadow-2xl rounded-xl overflow-hidden bg-black/20">
+        <div className="relative w-full shadow-2xl rounded-xl overflow-hidden bg-black/20 flex items-center justify-center">
             {isLoading && (
                 <div className="absolute inset-0 bg-black/70 z-30 flex flex-col items-center justify-center gap-4 animate-fade-in">
                     <Spinner />
@@ -430,7 +430,7 @@ const App: React.FC = () => {
                 onChange={c => setCrop(c)} 
                 onComplete={c => setCompletedCrop(c)}
                 aspect={aspect}
-                className="max-h-[60vh]"
+                className="max-h-[70vh]"
               >
                 {cropImageElement}
               </ReactCrop>
