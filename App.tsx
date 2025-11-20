@@ -15,6 +15,8 @@ import RetouchPanel from './components/RetouchPanel';
 import CropPanel from './components/CropPanel';
 import ImageGeneratorPanel from './components/ImageGeneratorPanel';
 import ManifestBoard from './components/ManifestBoard';
+import LogoCreatorModal from './components/LogoCreatorModal';
+import FaviconCreatorModal from './components/FaviconCreatorModal';
 import { UndoIcon, RedoIcon, EyeIcon } from './components/icons';
 import StartScreen from './components/StartScreen';
 import ApiKeySetupModal from './components/ApiKeySetupModal';
@@ -64,6 +66,8 @@ const App: React.FC = () => {
   const [isAdminModeActive, setIsAdminModeActive] = useState<boolean>(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [showManifestBoard, setShowManifestBoard] = useState<boolean>(false);
+  const [showLogoCreator, setShowLogoCreator] = useState<boolean>(false);
+  const [showFaviconCreator, setShowFaviconCreator] = useState<boolean>(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
   const currentImage = history[historyIndex] ?? null;
@@ -235,6 +239,52 @@ const App: React.FC = () => {
     } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
         setError(`Failed to generate the image. ${errorMessage}`);
+        console.error(err);
+    } finally {
+        setIsLoading(false);
+    }
+  }, [history, addImageToHistory]);
+
+  const handleGenerateLogo = useCallback(async (prompt: string, style: string) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+        const generatedImageUrl = await generateImageFromText(prompt, '1:1');
+        const newImageFile = dataURLtoFile(generatedImageUrl, `logo-${Date.now()}.png`);
+        
+        if (history.length === 0) {
+          setHistory([newImageFile]);
+          setHistoryIndex(0);
+        } else {
+          addImageToHistory(newImageFile);
+        }
+    } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+        setError(`Failed to generate the logo. ${errorMessage}`);
+        console.error(err);
+    } finally {
+        setIsLoading(false);
+    }
+  }, [history, addImageToHistory]);
+
+  const handleGenerateFavicon = useCallback(async (prompt: string) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+        const generatedImageUrl = await generateImageFromText(prompt, '1:1');
+        const newImageFile = dataURLtoFile(generatedImageUrl, `favicon-${Date.now()}.png`);
+        
+        if (history.length === 0) {
+          setHistory([newImageFile]);
+          setHistoryIndex(0);
+        } else {
+          addImageToHistory(newImageFile);
+        }
+    } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+        setError(`Failed to generate the favicon. ${errorMessage}`);
         console.error(err);
     } finally {
         setIsLoading(false);
@@ -473,6 +523,24 @@ const App: React.FC = () => {
 
     return (
       <div className="w-full max-w-4xl mx-auto flex flex-col items-center gap-6 animate-fade-in">
+        {/* Tabs moved above the image */}
+        <div className="w-full bg-gray-800/80 border border-gray-700/80 rounded-lg p-2 flex items-center justify-center gap-2 backdrop-blur-sm">
+            {(['retouch', 'crop', 'adjust', 'filters', 'generate'] as Tab[]).map(tab => (
+                 <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`w-full capitalize font-semibold py-3 px-5 rounded-md transition-all duration-200 text-base ${
+                        activeTab === tab 
+                        ? 'bg-gradient-to-br from-blue-500 to-cyan-400 text-white shadow-lg shadow-cyan-500/40' 
+                        : 'text-gray-300 hover:text-white hover:bg-white/10'
+                    }`}
+                >
+                    {tab === 'generate' ? '✨ Generate' : tab}
+                </button>
+            ))}
+        </div>
+        
+        {/* Image display */}
         <div className="relative w-full shadow-2xl rounded-xl overflow-hidden bg-black/20 flex items-center justify-center">
             {isLoading && (
                 <div className="absolute inset-0 bg-black/70 z-30 flex flex-col items-center justify-center gap-4 animate-fade-in">
@@ -503,22 +571,7 @@ const App: React.FC = () => {
             )}
         </div>
         
-        <div className="w-full bg-gray-800/80 border border-gray-700/80 rounded-lg p-2 flex items-center justify-center gap-2 backdrop-blur-sm">
-            {(['retouch', 'crop', 'adjust', 'filters', 'generate'] as Tab[]).map(tab => (
-                 <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`w-full capitalize font-semibold py-3 px-5 rounded-md transition-all duration-200 text-base ${
-                        activeTab === tab 
-                        ? 'bg-gradient-to-br from-blue-500 to-cyan-400 text-white shadow-lg shadow-cyan-500/40' 
-                        : 'text-gray-300 hover:text-white hover:bg-white/10'
-                    }`}
-                >
-                    {tab === 'generate' ? '✨ Generate' : tab}
-                </button>
-            ))}
-        </div>
-        
+        {/* Presets/panels moved below the image */}
         <div className="w-full">
             {activeTab === 'retouch' && (
                 <RetouchPanel 
@@ -611,6 +664,8 @@ const App: React.FC = () => {
           <Header 
             onSettingsClick={() => setShowSettings(true)}
             onManifestBoardClick={() => setShowManifestBoard(true)}
+            onLogoCreatorClick={() => setShowLogoCreator(true)}
+            onFaviconCreatorClick={() => setShowFaviconCreator(true)}
             isAdminMode={isAdminModeActive}
           />
           <main className={`flex-grow w-full max-w-[1600px] mx-auto p-4 md:p-8 flex justify-center ${currentImage ? 'items-start' : 'items-center'}`}>
@@ -641,6 +696,16 @@ const App: React.FC = () => {
           {showManifestBoard && (
             <ManifestBoard onClose={() => setShowManifestBoard(false)} />
           )}
+          <LogoCreatorModal 
+            isOpen={showLogoCreator}
+            onClose={() => setShowLogoCreator(false)}
+            onGenerateLogo={handleGenerateLogo}
+          />
+          <FaviconCreatorModal 
+            isOpen={showFaviconCreator}
+            onClose={() => setShowFaviconCreator(false)}
+            onGenerateFavicon={handleGenerateFavicon}
+          />
         </>
       )}
     </div>
