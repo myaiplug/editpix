@@ -17,6 +17,7 @@ import ImageGeneratorPanel from './components/ImageGeneratorPanel';
 import ManifestBoard from './components/ManifestBoard';
 import LogoCreatorModal from './components/LogoCreatorModal';
 import FaviconCreatorModal from './components/FaviconCreatorModal';
+import ShareModal from './components/ShareModal';
 import { UndoIcon, RedoIcon, EyeIcon } from './components/icons';
 import StartScreen from './components/StartScreen';
 import ApiKeySetupModal from './components/ApiKeySetupModal';
@@ -24,6 +25,7 @@ import ApiKeyGuideModal from './components/ApiKeyGuideModal';
 import SettingsModal from './components/SettingsModal';
 import PasswordProtectionModal from './components/PasswordProtectionModal';
 import { getApiKey, saveApiKey, isAdminMode as checkAdminMode } from './utils/apiKeyManager';
+import soundManager from './utils/soundManager';
 
 // Helper to convert a data URL string to a File object
 const dataURLtoFile = (dataurl: string, filename: string): File => {
@@ -68,6 +70,7 @@ const App: React.FC = () => {
   const [showManifestBoard, setShowManifestBoard] = useState<boolean>(false);
   const [showLogoCreator, setShowLogoCreator] = useState<boolean>(false);
   const [showFaviconCreator, setShowFaviconCreator] = useState<boolean>(false);
+  const [showShareModal, setShowShareModal] = useState<boolean>(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
   const currentImage = history[historyIndex] ?? null;
@@ -146,21 +149,25 @@ const App: React.FC = () => {
   const handleGenerate = useCallback(async () => {
     if (!currentImage) {
       setError('No image loaded to edit.');
+      soundManager.playError();
       return;
     }
     
     if (!prompt.trim()) {
         setError('Please enter a description for your edit.');
+        soundManager.playError();
         return;
     }
 
     if (!editHotspot) {
         setError('Please click on the image to select an area to edit.');
+        soundManager.playError();
         return;
     }
 
     setIsLoading(true);
     setError(null);
+    soundManager.playProcessing();
     
     try {
         const editedImageUrl = await generateEditedImage(currentImage, prompt, editHotspot);
@@ -168,9 +175,11 @@ const App: React.FC = () => {
         addImageToHistory(newImageFile);
         setEditHotspot(null);
         setDisplayHotspot(null);
+        soundManager.playSuccess();
     } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
         setError(`Failed to generate the image. ${errorMessage}`);
+        soundManager.playError();
         console.error(err);
     } finally {
         setIsLoading(false);
@@ -180,19 +189,23 @@ const App: React.FC = () => {
   const handleApplyFilter = useCallback(async (filterPrompt: string) => {
     if (!currentImage) {
       setError('No image loaded to apply a filter to.');
+      soundManager.playError();
       return;
     }
     
     setIsLoading(true);
     setError(null);
+    soundManager.playProcessing();
     
     try {
         const filteredImageUrl = await generateFilteredImage(currentImage, filterPrompt);
         const newImageFile = dataURLtoFile(filteredImageUrl, `filtered-${Date.now()}.png`);
         addImageToHistory(newImageFile);
+        soundManager.playSuccess();
     } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
         setError(`Failed to apply the filter. ${errorMessage}`);
+        soundManager.playError();
         console.error(err);
     } finally {
         setIsLoading(false);
@@ -202,19 +215,23 @@ const App: React.FC = () => {
   const handleApplyAdjustment = useCallback(async (adjustmentPrompt: string) => {
     if (!currentImage) {
       setError('No image loaded to apply an adjustment to.');
+      soundManager.playError();
       return;
     }
     
     setIsLoading(true);
     setError(null);
+    soundManager.playProcessing();
     
     try {
         const adjustedImageUrl = await generateAdjustedImage(currentImage, adjustmentPrompt);
         const newImageFile = dataURLtoFile(adjustedImageUrl, `adjusted-${Date.now()}.png`);
         addImageToHistory(newImageFile);
+        soundManager.playSuccess();
     } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
         setError(`Failed to apply the adjustment. ${errorMessage}`);
+        soundManager.playError();
         console.error(err);
     } finally {
         setIsLoading(false);
@@ -224,6 +241,7 @@ const App: React.FC = () => {
   const handleGenerateImage = useCallback(async (prompt: string, aspectRatio: string) => {
     setIsLoading(true);
     setError(null);
+    soundManager.playProcessing();
     
     try {
         const generatedImageUrl = await generateImageFromText(prompt, aspectRatio);
@@ -236,9 +254,11 @@ const App: React.FC = () => {
         } else {
           addImageToHistory(newImageFile);
         }
+        soundManager.playSuccess();
     } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
         setError(`Failed to generate the image. ${errorMessage}`);
+        soundManager.playError();
         console.error(err);
     } finally {
         setIsLoading(false);
@@ -248,6 +268,7 @@ const App: React.FC = () => {
   const handleGenerateLogo = useCallback(async (prompt: string, style: string) => {
     setIsLoading(true);
     setError(null);
+    soundManager.playProcessing();
     
     try {
         const generatedImageUrl = await generateImageFromText(prompt, '1:1');
@@ -259,9 +280,11 @@ const App: React.FC = () => {
         } else {
           addImageToHistory(newImageFile);
         }
+        soundManager.playSuccess();
     } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
         setError(`Failed to generate the logo. ${errorMessage}`);
+        soundManager.playError();
         console.error(err);
     } finally {
         setIsLoading(false);
@@ -271,6 +294,7 @@ const App: React.FC = () => {
   const handleGenerateFavicon = useCallback(async (prompt: string) => {
     setIsLoading(true);
     setError(null);
+    soundManager.playProcessing();
     
     try {
         const generatedImageUrl = await generateImageFromText(prompt, '1:1');
@@ -282,9 +306,11 @@ const App: React.FC = () => {
         } else {
           addImageToHistory(newImageFile);
         }
+        soundManager.playSuccess();
     } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
         setError(`Failed to generate the favicon. ${errorMessage}`);
+        soundManager.playError();
         console.error(err);
     } finally {
         setIsLoading(false);
@@ -294,6 +320,7 @@ const App: React.FC = () => {
   const handleApplyCrop = useCallback(() => {
     if (!completedCrop || !imgRef.current) {
         setError('Please select an area to crop.');
+        soundManager.playError();
         return;
     }
 
@@ -340,6 +367,7 @@ const App: React.FC = () => {
       setHistoryIndex(historyIndex - 1);
       setEditHotspot(null);
       setDisplayHotspot(null);
+      soundManager.playClick();
     }
   }, [canUndo, historyIndex]);
   
@@ -348,8 +376,19 @@ const App: React.FC = () => {
       setHistoryIndex(historyIndex + 1);
       setEditHotspot(null);
       setDisplayHotspot(null);
+      soundManager.playClick();
     }
   }, [canRedo, historyIndex]);
+
+  const handleGenerateContent = useCallback(async (contentType: string, platform: string, imageDescription: string) => {
+    // This would integrate with an AI service to generate content
+    const contentPrompt = `Generate ${contentType} for ${platform} based on this image: ${imageDescription}`;
+    console.log('Generating content:', contentPrompt);
+    soundManager.playNotification();
+    
+    // In a real implementation, this would call an AI service
+    alert(`Content generation for ${platform} (${contentType}) would be created here. Description: ${imageDescription}`);
+  }, []);
 
   const handleReset = useCallback(() => {
     if (history.length > 0) {
@@ -378,6 +417,7 @@ const App: React.FC = () => {
           link.click();
           document.body.removeChild(link);
           URL.revokeObjectURL(link.href);
+          soundManager.playNotification();
       }
   }, [currentImage]);
   
@@ -641,6 +681,19 @@ const App: React.FC = () => {
             </button>
 
             <button 
+                onClick={() => {
+                  setShowShareModal(true);
+                  soundManager.playClick();
+                }}
+                className="flex items-center justify-center bg-gradient-to-br from-purple-600 to-pink-500 text-white font-bold py-3 px-5 rounded-md transition-all duration-300 ease-in-out shadow-lg shadow-purple-500/20 hover:shadow-xl hover:shadow-purple-500/40 hover:-translate-y-px active:scale-95 text-base"
+            >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+                Share
+            </button>
+
+            <button 
                 onClick={handleDownload}
                 className="flex-grow sm:flex-grow-0 ml-auto bg-gradient-to-br from-green-600 to-green-500 text-white font-bold py-3 px-5 rounded-md transition-all duration-300 ease-in-out shadow-lg shadow-green-500/20 hover:shadow-xl hover:shadow-green-500/40 hover:-translate-y-px active:scale-95 active:shadow-inner text-base"
             >
@@ -705,6 +758,12 @@ const App: React.FC = () => {
             isOpen={showFaviconCreator}
             onClose={() => setShowFaviconCreator(false)}
             onGenerateFavicon={handleGenerateFavicon}
+          />
+          <ShareModal 
+            isOpen={showShareModal}
+            onClose={() => setShowShareModal(false)}
+            imageFile={currentImage}
+            onGenerateContent={handleGenerateContent}
           />
         </>
       )}
