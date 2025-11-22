@@ -15,6 +15,9 @@ import RetouchPanel from './components/RetouchPanel';
 import CropPanel from './components/CropPanel';
 import ImageGeneratorPanel from './components/ImageGeneratorPanel';
 import ManifestBoard from './components/ManifestBoard';
+import LogoCreatorModal from './components/LogoCreatorModal';
+import FaviconCreatorModal from './components/FaviconCreatorModal';
+import ShareModal from './components/ShareModal';
 import { UndoIcon, RedoIcon, EyeIcon } from './components/icons';
 import StartScreen from './components/StartScreen';
 import ApiKeySetupModal from './components/ApiKeySetupModal';
@@ -22,6 +25,7 @@ import ApiKeyGuideModal from './components/ApiKeyGuideModal';
 import SettingsModal from './components/SettingsModal';
 import PasswordProtectionModal from './components/PasswordProtectionModal';
 import { getApiKey, saveApiKey, isAdminMode as checkAdminMode } from './utils/apiKeyManager';
+import soundManager from './utils/soundManager';
 
 // Helper to convert a data URL string to a File object
 const dataURLtoFile = (dataurl: string, filename: string): File => {
@@ -64,6 +68,9 @@ const App: React.FC = () => {
   const [isAdminModeActive, setIsAdminModeActive] = useState<boolean>(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [showManifestBoard, setShowManifestBoard] = useState<boolean>(false);
+  const [showLogoCreator, setShowLogoCreator] = useState<boolean>(false);
+  const [showFaviconCreator, setShowFaviconCreator] = useState<boolean>(false);
+  const [showShareModal, setShowShareModal] = useState<boolean>(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
   const currentImage = history[historyIndex] ?? null;
@@ -142,21 +149,25 @@ const App: React.FC = () => {
   const handleGenerate = useCallback(async () => {
     if (!currentImage) {
       setError('No image loaded to edit.');
+      soundManager.playError();
       return;
     }
     
     if (!prompt.trim()) {
         setError('Please enter a description for your edit.');
+        soundManager.playError();
         return;
     }
 
     if (!editHotspot) {
         setError('Please click on the image to select an area to edit.');
+        soundManager.playError();
         return;
     }
 
     setIsLoading(true);
     setError(null);
+    soundManager.playProcessing();
     
     try {
         const editedImageUrl = await generateEditedImage(currentImage, prompt, editHotspot);
@@ -164,9 +175,11 @@ const App: React.FC = () => {
         addImageToHistory(newImageFile);
         setEditHotspot(null);
         setDisplayHotspot(null);
+        soundManager.playSuccess();
     } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
         setError(`Failed to generate the image. ${errorMessage}`);
+        soundManager.playError();
         console.error(err);
     } finally {
         setIsLoading(false);
@@ -176,19 +189,23 @@ const App: React.FC = () => {
   const handleApplyFilter = useCallback(async (filterPrompt: string) => {
     if (!currentImage) {
       setError('No image loaded to apply a filter to.');
+      soundManager.playError();
       return;
     }
     
     setIsLoading(true);
     setError(null);
+    soundManager.playProcessing();
     
     try {
         const filteredImageUrl = await generateFilteredImage(currentImage, filterPrompt);
         const newImageFile = dataURLtoFile(filteredImageUrl, `filtered-${Date.now()}.png`);
         addImageToHistory(newImageFile);
+        soundManager.playSuccess();
     } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
         setError(`Failed to apply the filter. ${errorMessage}`);
+        soundManager.playError();
         console.error(err);
     } finally {
         setIsLoading(false);
@@ -198,19 +215,23 @@ const App: React.FC = () => {
   const handleApplyAdjustment = useCallback(async (adjustmentPrompt: string) => {
     if (!currentImage) {
       setError('No image loaded to apply an adjustment to.');
+      soundManager.playError();
       return;
     }
     
     setIsLoading(true);
     setError(null);
+    soundManager.playProcessing();
     
     try {
         const adjustedImageUrl = await generateAdjustedImage(currentImage, adjustmentPrompt);
         const newImageFile = dataURLtoFile(adjustedImageUrl, `adjusted-${Date.now()}.png`);
         addImageToHistory(newImageFile);
+        soundManager.playSuccess();
     } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
         setError(`Failed to apply the adjustment. ${errorMessage}`);
+        soundManager.playError();
         console.error(err);
     } finally {
         setIsLoading(false);
@@ -220,6 +241,7 @@ const App: React.FC = () => {
   const handleGenerateImage = useCallback(async (prompt: string, aspectRatio: string) => {
     setIsLoading(true);
     setError(null);
+    soundManager.playProcessing();
     
     try {
         const generatedImageUrl = await generateImageFromText(prompt, aspectRatio);
@@ -232,9 +254,63 @@ const App: React.FC = () => {
         } else {
           addImageToHistory(newImageFile);
         }
+        soundManager.playSuccess();
     } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
         setError(`Failed to generate the image. ${errorMessage}`);
+        soundManager.playError();
+        console.error(err);
+    } finally {
+        setIsLoading(false);
+    }
+  }, [history, addImageToHistory]);
+
+  const handleGenerateLogo = useCallback(async (prompt: string, style: string) => {
+    setIsLoading(true);
+    setError(null);
+    soundManager.playProcessing();
+    
+    try {
+        const generatedImageUrl = await generateImageFromText(prompt, '1:1');
+        const newImageFile = dataURLtoFile(generatedImageUrl, `logo-${Date.now()}.png`);
+        
+        if (history.length === 0) {
+          setHistory([newImageFile]);
+          setHistoryIndex(0);
+        } else {
+          addImageToHistory(newImageFile);
+        }
+        soundManager.playSuccess();
+    } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+        setError(`Failed to generate the logo. ${errorMessage}`);
+        soundManager.playError();
+        console.error(err);
+    } finally {
+        setIsLoading(false);
+    }
+  }, [history, addImageToHistory]);
+
+  const handleGenerateFavicon = useCallback(async (prompt: string) => {
+    setIsLoading(true);
+    setError(null);
+    soundManager.playProcessing();
+    
+    try {
+        const generatedImageUrl = await generateImageFromText(prompt, '1:1');
+        const newImageFile = dataURLtoFile(generatedImageUrl, `favicon-${Date.now()}.png`);
+        
+        if (history.length === 0) {
+          setHistory([newImageFile]);
+          setHistoryIndex(0);
+        } else {
+          addImageToHistory(newImageFile);
+        }
+        soundManager.playSuccess();
+    } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+        setError(`Failed to generate the favicon. ${errorMessage}`);
+        soundManager.playError();
         console.error(err);
     } finally {
         setIsLoading(false);
@@ -244,6 +320,7 @@ const App: React.FC = () => {
   const handleApplyCrop = useCallback(() => {
     if (!completedCrop || !imgRef.current) {
         setError('Please select an area to crop.');
+        soundManager.playError();
         return;
     }
 
@@ -290,6 +367,7 @@ const App: React.FC = () => {
       setHistoryIndex(historyIndex - 1);
       setEditHotspot(null);
       setDisplayHotspot(null);
+      soundManager.playClick();
     }
   }, [canUndo, historyIndex]);
   
@@ -298,8 +376,19 @@ const App: React.FC = () => {
       setHistoryIndex(historyIndex + 1);
       setEditHotspot(null);
       setDisplayHotspot(null);
+      soundManager.playClick();
     }
   }, [canRedo, historyIndex]);
+
+  const handleGenerateContent = useCallback(async (contentType: string, platform: string, imageDescription: string) => {
+    // This would integrate with an AI service to generate content
+    const contentPrompt = `Generate ${contentType} for ${platform} based on this image: ${imageDescription}`;
+    console.log('Generating content:', contentPrompt);
+    soundManager.playNotification();
+    
+    // In a real implementation, this would call an AI service
+    alert(`Content generation for ${platform} (${contentType}) would be created here. Description: ${imageDescription}`);
+  }, []);
 
   const handleReset = useCallback(() => {
     if (history.length > 0) {
@@ -328,6 +417,7 @@ const App: React.FC = () => {
           link.click();
           document.body.removeChild(link);
           URL.revokeObjectURL(link.href);
+          soundManager.playNotification();
       }
   }, [currentImage]);
   
@@ -473,6 +563,27 @@ const App: React.FC = () => {
 
     return (
       <div className="w-full max-w-4xl mx-auto flex flex-col items-center gap-6 animate-fade-in">
+        {/* Tabs moved above the image */}
+        <div className="w-full bg-gray-800/80 border border-gray-700/80 rounded-lg p-2 flex items-center justify-center gap-2 backdrop-blur-sm">
+            {(['retouch', 'crop', 'adjust', 'filters', 'generate'] as Tab[]).map(tab => (
+                 <button
+                    key={tab}
+                    onClick={() => {
+                      setActiveTab(tab);
+                      soundManager.playClick();
+                    }}
+                    className={`btn-advanced tab-slide w-full capitalize font-semibold py-3 px-5 rounded-md transition-all duration-200 text-base ${
+                        activeTab === tab 
+                        ? 'bg-gradient-to-br from-blue-500 to-cyan-400 text-white shadow-lg shadow-cyan-500/40 active' 
+                        : 'text-gray-300 hover:text-white hover:bg-white/10 hover:shadow-md'
+                    }`}
+                >
+                    {tab === 'generate' ? '✨ Generate' : tab}
+                </button>
+            ))}
+        </div>
+        
+        {/* Image display */}
         <div className="relative w-full shadow-2xl rounded-xl overflow-hidden bg-black/20 flex items-center justify-center">
             {isLoading && (
                 <div className="absolute inset-0 bg-black/70 z-30 flex flex-col items-center justify-center gap-4 animate-fade-in">
@@ -503,22 +614,7 @@ const App: React.FC = () => {
             )}
         </div>
         
-        <div className="w-full bg-gray-800/80 border border-gray-700/80 rounded-lg p-2 flex items-center justify-center gap-2 backdrop-blur-sm">
-            {(['retouch', 'crop', 'adjust', 'filters', 'generate'] as Tab[]).map(tab => (
-                 <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`w-full capitalize font-semibold py-3 px-5 rounded-md transition-all duration-200 text-base ${
-                        activeTab === tab 
-                        ? 'bg-gradient-to-br from-blue-500 to-cyan-400 text-white shadow-lg shadow-cyan-500/40' 
-                        : 'text-gray-300 hover:text-white hover:bg-white/10'
-                    }`}
-                >
-                    {tab === 'generate' ? '✨ Generate' : tab}
-                </button>
-            ))}
-        </div>
-        
+        {/* Presets/panels moved below the image */}
         <div className="w-full">
             {activeTab === 'retouch' && (
                 <RetouchPanel 
@@ -540,7 +636,7 @@ const App: React.FC = () => {
             <button 
                 onClick={handleUndo}
                 disabled={!canUndo}
-                className="flex items-center justify-center text-center bg-white/10 border border-white/20 text-gray-200 font-semibold py-3 px-5 rounded-md transition-all duration-200 ease-in-out hover:bg-white/20 hover:border-white/30 active:scale-95 text-base disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-white/5"
+                className="btn-advanced flex items-center justify-center text-center bg-white/10 border border-white/20 text-gray-200 font-semibold py-3 px-5 rounded-md transition-all duration-200 ease-in-out hover:bg-white/20 hover:border-white/30 hover:shadow-lg active:scale-95 text-base disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-white/5"
                 aria-label="Undo last action"
             >
                 <UndoIcon className="w-5 h-5 mr-2" />
@@ -549,7 +645,7 @@ const App: React.FC = () => {
             <button 
                 onClick={handleRedo}
                 disabled={!canRedo}
-                className="flex items-center justify-center text-center bg-white/10 border border-white/20 text-gray-200 font-semibold py-3 px-5 rounded-md transition-all duration-200 ease-in-out hover:bg-white/20 hover:border-white/30 active:scale-95 text-base disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-white/5"
+                className="btn-advanced flex items-center justify-center text-center bg-white/10 border border-white/20 text-gray-200 font-semibold py-3 px-5 rounded-md transition-all duration-200 ease-in-out hover:bg-white/20 hover:border-white/30 hover:shadow-lg active:scale-95 text-base disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-white/5"
                 aria-label="Redo last action"
             >
                 <RedoIcon className="w-5 h-5 mr-2" />
@@ -574,22 +670,41 @@ const App: React.FC = () => {
             )}
 
             <button 
-                onClick={handleReset}
+                onClick={() => {
+                  handleReset();
+                  soundManager.playClick();
+                }}
                 disabled={!canUndo}
-                className="text-center bg-transparent border border-white/20 text-gray-200 font-semibold py-3 px-5 rounded-md transition-all duration-200 ease-in-out hover:bg-white/10 hover:border-white/30 active:scale-95 text-base disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-transparent"
+                className="btn-advanced text-center bg-transparent border border-white/20 text-gray-200 font-semibold py-3 px-5 rounded-md transition-all duration-200 ease-in-out hover:bg-white/10 hover:border-white/30 hover:shadow-lg active:scale-95 text-base disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-transparent"
               >
                 Reset
             </button>
             <button 
-                onClick={handleUploadNew}
-                className="text-center bg-white/10 border border-white/20 text-gray-200 font-semibold py-3 px-5 rounded-md transition-all duration-200 ease-in-out hover:bg-white/20 hover:border-white/30 active:scale-95 text-base"
+                onClick={() => {
+                  handleUploadNew();
+                  soundManager.playClick();
+                }}
+                className="btn-advanced text-center bg-white/10 border border-white/20 text-gray-200 font-semibold py-3 px-5 rounded-md transition-all duration-200 ease-in-out hover:bg-white/20 hover:border-white/30 hover:shadow-lg active:scale-95 text-base"
             >
                 Upload New
             </button>
 
             <button 
+                onClick={() => {
+                  setShowShareModal(true);
+                  soundManager.playClick();
+                }}
+                className="btn-advanced btn-glow flex items-center justify-center bg-gradient-to-br from-purple-600 to-pink-500 text-white font-bold py-3 px-5 rounded-md transition-all duration-300 ease-in-out shadow-lg shadow-purple-500/20 hover:shadow-2xl hover:shadow-purple-500/50 hover:-translate-y-1 active:scale-95 text-base"
+            >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+                Share
+            </button>
+
+            <button 
                 onClick={handleDownload}
-                className="flex-grow sm:flex-grow-0 ml-auto bg-gradient-to-br from-green-600 to-green-500 text-white font-bold py-3 px-5 rounded-md transition-all duration-300 ease-in-out shadow-lg shadow-green-500/20 hover:shadow-xl hover:shadow-green-500/40 hover:-translate-y-px active:scale-95 active:shadow-inner text-base"
+                className="btn-advanced btn-glow flex-grow sm:flex-grow-0 ml-auto bg-gradient-to-br from-green-600 to-green-500 text-white font-bold py-3 px-5 rounded-md transition-all duration-300 ease-in-out shadow-lg shadow-green-500/20 hover:shadow-2xl hover:shadow-green-500/50 hover:-translate-y-1 active:scale-95 active:shadow-inner text-base"
             >
                 Download Image
             </button>
@@ -611,6 +726,8 @@ const App: React.FC = () => {
           <Header 
             onSettingsClick={() => setShowSettings(true)}
             onManifestBoardClick={() => setShowManifestBoard(true)}
+            onLogoCreatorClick={() => setShowLogoCreator(true)}
+            onFaviconCreatorClick={() => setShowFaviconCreator(true)}
             isAdminMode={isAdminModeActive}
           />
           <main className={`flex-grow w-full max-w-[1600px] mx-auto p-4 md:p-8 flex justify-center ${currentImage ? 'items-start' : 'items-center'}`}>
@@ -641,6 +758,22 @@ const App: React.FC = () => {
           {showManifestBoard && (
             <ManifestBoard onClose={() => setShowManifestBoard(false)} />
           )}
+          <LogoCreatorModal 
+            isOpen={showLogoCreator}
+            onClose={() => setShowLogoCreator(false)}
+            onGenerateLogo={handleGenerateLogo}
+          />
+          <FaviconCreatorModal 
+            isOpen={showFaviconCreator}
+            onClose={() => setShowFaviconCreator(false)}
+            onGenerateFavicon={handleGenerateFavicon}
+          />
+          <ShareModal 
+            isOpen={showShareModal}
+            onClose={() => setShowShareModal(false)}
+            imageFile={currentImage}
+            onGenerateContent={handleGenerateContent}
+          />
         </>
       )}
     </div>

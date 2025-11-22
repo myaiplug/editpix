@@ -1,8 +1,8 @@
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
-*/
-import React from 'react';
+ */
+import React, { useState, useRef, useEffect } from 'react';
 
 const SparkleIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -13,37 +13,120 @@ const SparkleIcon: React.FC<{ className?: string }> = ({ className }) => (
 interface HeaderProps {
   onSettingsClick?: () => void;
   onManifestBoardClick?: () => void;
+  onLogoCreatorClick?: () => void;
+  onFaviconCreatorClick?: () => void;
   isAdminMode?: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ onSettingsClick, onManifestBoardClick, isAdminMode }) => {
+const Header: React.FC<HeaderProps> = ({ 
+  onSettingsClick, 
+  onManifestBoardClick, 
+  onLogoCreatorClick,
+  onFaviconCreatorClick,
+  isAdminMode 
+}) => {
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
     <header className="w-full py-4 px-8 border-b border-gray-700 bg-gray-800/30 backdrop-blur-sm sticky top-0 z-50">
       <div className="flex items-center justify-between max-w-[1600px] mx-auto">
-        <div className="flex items-center gap-3">
-          <SparkleIcon className="w-6 h-6 text-blue-400" />
-          <h1 className="text-xl font-bold tracking-tight text-gray-100">
-            EditPix 
-          </h1>
+        <div className="flex items-center gap-3 relative" ref={dropdownRef}>
+          <button
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="flex items-center gap-3 hover:bg-white/5 rounded-lg p-2 -ml-2 transition-all duration-200 group"
+          >
+            <SparkleIcon className="w-6 h-6 text-blue-400 group-hover:scale-110 transition-transform" />
+            <h1 className="text-xl font-bold tracking-tight text-gray-100">
+              EditPix 
+            </h1>
+            <svg 
+              className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
           {isAdminMode && (
             <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold px-2 py-1 rounded-full">
               ADMIN
             </span>
           )}
-        </div>
-        <div className="flex items-center gap-2">
-          {onManifestBoardClick && (
-            <button
-              onClick={onManifestBoardClick}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2"
-              aria-label="Manifest Board"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z" />
-              </svg>
-              Manifest Board
-            </button>
+          
+          {/* Dropdown Menu */}
+          {isDropdownOpen && (
+            <div className="absolute top-full left-0 mt-2 w-72 bg-gray-800/95 backdrop-blur-md border border-gray-700 rounded-lg shadow-2xl overflow-hidden animate-fade-in z-50">
+              {onManifestBoardClick && (
+                <button
+                  onClick={() => {
+                    onManifestBoardClick();
+                    setIsDropdownOpen(false);
+                  }}
+                  className="w-full text-left px-4 py-3 hover:bg-white/10 transition-colors flex items-center gap-3 group"
+                >
+                  <svg className="w-5 h-5 text-purple-400 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z" />
+                  </svg>
+                  <div>
+                    <div className="text-sm font-semibold text-gray-100">Dream Board</div>
+                    <div className="text-xs text-gray-400">Manifest your vision</div>
+                  </div>
+                </button>
+              )}
+              
+              {onLogoCreatorClick && (
+                <button
+                  onClick={() => {
+                    onLogoCreatorClick();
+                    setIsDropdownOpen(false);
+                  }}
+                  className="w-full text-left px-4 py-3 hover:bg-white/10 transition-colors flex items-center gap-3 group"
+                >
+                  <svg className="w-5 h-5 text-cyan-400 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                  </svg>
+                  <div>
+                    <div className="text-sm font-semibold text-gray-100">Logo Creator</div>
+                    <div className="text-xs text-gray-400">Professional high-quality logos</div>
+                  </div>
+                </button>
+              )}
+              
+              {onFaviconCreatorClick && (
+                <button
+                  onClick={() => {
+                    onFaviconCreatorClick();
+                    setIsDropdownOpen(false);
+                  }}
+                  className="w-full text-left px-4 py-3 hover:bg-white/10 transition-colors flex items-center gap-3 group"
+                >
+                  <svg className="w-5 h-5 text-green-400 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <div>
+                    <div className="text-sm font-semibold text-gray-100">Favicon Generator</div>
+                    <div className="text-xs text-gray-400">Perfectly sized favicons</div>
+                  </div>
+                </button>
+              )}
+            </div>
           )}
+        </div>
+        
+        <div className="flex items-center gap-2">
           {onSettingsClick && (
             <button
               onClick={onSettingsClick}

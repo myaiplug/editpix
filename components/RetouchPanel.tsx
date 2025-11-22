@@ -78,7 +78,7 @@ const RetouchPanel: React.FC<RetouchPanelProps> = ({
                 key={preset.name}
                 onClick={() => handlePresetClick(preset.prompt)}
                 disabled={isLoading}
-                className={`w-full text-center bg-white/10 border border-transparent text-gray-200 font-semibold py-3 px-4 rounded-md transition-all duration-200 ease-in-out hover:bg-white/20 hover:border-white/20 active:scale-95 text-base disabled:opacity-50 disabled:cursor-not-allowed ${selectedPresetPrompt === preset.prompt ? 'ring-2 ring-offset-2 ring-offset-gray-800 ring-blue-500' : ''}`}
+                className={`btn-advanced w-full text-center bg-white/10 border border-transparent text-gray-200 font-semibold py-3 px-4 rounded-md transition-all duration-200 ease-in-out hover:bg-white/20 hover:border-white/20 hover:shadow-lg hover:shadow-blue-500/30 active:scale-95 text-base disabled:opacity-50 disabled:cursor-not-allowed ${selectedPresetPrompt === preset.prompt ? 'ring-2 ring-offset-2 ring-offset-gray-800 ring-blue-500 bg-blue-500/20' : ''}`}
               >
                 {preset.name}
               </button>
@@ -150,7 +150,7 @@ const RetouchPanel: React.FC<RetouchPanelProps> = ({
         />
         <button 
           type="submit"
-          className="bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-5 px-8 text-lg rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-px active:scale-95 active:shadow-inner disabled:from-blue-800 disabled:to-blue-700 disabled:shadow-none disabled:cursor-not-allowed disabled:transform-none"
+          className="btn-advanced btn-glow bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-5 px-8 text-lg rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-blue-500/20 hover:shadow-2xl hover:shadow-blue-500/50 hover:-translate-y-1 active:scale-95 active:shadow-inner disabled:from-blue-800 disabled:to-blue-700 disabled:shadow-none disabled:cursor-not-allowed disabled:transform-none"
           disabled={isLoading || !prompt.trim() || !editHotspot}
         >
           Generate
