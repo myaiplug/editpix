@@ -3,12 +3,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import { GoogleGenAI, GenerateContentResponse, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { getApiKey } from "../utils/apiKeyManager";
 
 // --- 2026 Industry Standard Model Constants ---
 const PRIMARY_MODEL = 'imagen-4.0-generate-001'; 
 const FALLBACK_MODEL = 'gemini-3-flash-preview'; 
+
+const SAFETY_SETTINGS = [
+    { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+    { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+    { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+    { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+];
 
 const fileToPart = async (file: File): Promise<{ inlineData: { mimeType: string; data: string; } }> => {
     const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -23,29 +30,61 @@ const fileToPart = async (file: File): Promise<{ inlineData: { mimeType: string;
     return { inlineData: { mimeType, data } };
 };
 
+/**
+ * ADVANCED ERROR HANDLING
+ * Provides specific user feedback based on the 2026 API response structure.
+ */
 const handleApiResponse = (response: GenerateContentResponse, context: string): string => {
+    // 1. Handle Prompt-Level Blocks (Safety/Policy)
     if (response.promptFeedback?.blockReason) {
-        throw new Error(`Request blocked: ${response.promptFeedback.blockReason}`);
+        const reason = response.promptFeedback.blockReason;
+        const msg = response.promptFeedback.blockReasonMessage || "Please rephrase your request.";
+        throw new Error(`Generation Blocked: Your prompt triggered a ${reason} filter. ${msg}`);
     }
-    const imagePart = response.candidates?.[0]?.content?.parts?.find(part => part.inlineData);
+
+    const candidate = response.candidates?.[0];
+
+    // 2. Handle Candidate-Level Finish Reasons
+    if (candidate?.finishReason && candidate.finishReason !== 'STOP') {
+        switch (candidate.finishReason) {
+            case 'SAFETY':
+                throw new Error("Safety Block: The generated content was flagged. Try a less descriptive prompt.");
+            case 'RECITATION':
+                throw new Error("Copyright Protection: The model produced content too similar to existing works.");
+            case 'OTHER':
+                throw new Error("Complex Request: The AI struggled to render this masterpiece. Try simplifying the details.");
+            default:
+                throw new Error(`Generation Interrupted: ${candidate.finishReason}. Please try again.`);
+        }
+    }
+
+    // 3. Extract Image Data
+    const imagePart = candidate?.content?.parts?.find(part => part.inlineData);
     if (imagePart?.inlineData) {
         return `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`;
     }
-    throw new Error(`The AI failed to return a premium image for ${context}.`);
+
+    // 4. Fallback for Empty Responses
+    throw new Error(`System Error: The AI confirmed completion but did not return image data for ${context}.`);
 };
 
 async function generateWithFallback(ai: any, payload: any, context: string): Promise<GenerateContentResponse> {
     try {
-        return await ai.models.generateContent({ ...payload, model: PRIMARY_MODEL });
+        return await ai.models.generateContent({ 
+            ...payload, 
+            model: PRIMARY_MODEL,
+            safetySettings: SAFETY_SETTINGS 
+        });
     } catch (error) {
-        console.warn(`Primary model failed. Falling back to ${FALLBACK_MODEL}.`);
-        return await ai.models.generateContent({ ...payload, model: FALLBACK_MODEL });
+        console.warn(`Primary model failed for ${context}. Trying fallback: ${FALLBACK_MODEL}`);
+        return await ai.models.generateContent({ 
+            ...payload, 
+            model: FALLBACK_MODEL,
+            safetySettings: SAFETY_SETTINGS 
+        });
     }
 }
 
-/**
- * GENERATE EDITED IMAGE - LOCALIZED MASTERPIECE
- */
 export const generateEditedImage = async (
     originalImage: File,
     userPrompt: string,
@@ -55,15 +94,12 @@ export const generateEditedImage = async (
     const ai = new GoogleGenAI({ apiKey });
     const originalImagePart = await fileToPart(originalImage);
     
-    // PREMIUM PROMPT: Focuses on sub-pixel blending and light temperature matching
     const prompt = `ACT AS A SENIOR VFX COMPOSITOR. 
 Task: Perform a hyper-realistic localized edit at (x: ${hotspot.x}, y: ${hotspot.y}).
 Request: "${userPrompt}"
 Technical Requirements:
 - Use sub-pixel accuracy to blend the edit with the original grain structure.
-- Match the global illumination, light temperature (Kelvin), and shadow density perfectly.
-- Maintain 8k ultra-sharp resolution and 32-bit color depth fidelity.
-- Ensure the edit is indistinguishable from a physical photograph.
+- Match global illumination, light temperature, and shadow density.
 Output: Return ONLY the raw processed image buffer. No text.`;
 
     const response = await generateWithFallback(ai, {
@@ -72,9 +108,6 @@ Output: Return ONLY the raw processed image buffer. No text.`;
     return handleApiResponse(response, 'edit');
 };
 
-/**
- * GENERATE FILTERED IMAGE - CINEMATIC COLOR SCIENCE
- */
 export const generateFilteredImage = async (
     originalImage: File,
     filterPrompt: string,
@@ -83,14 +116,8 @@ export const generateFilteredImage = async (
     const ai = new GoogleGenAI({ apiKey });
     const originalImagePart = await fileToPart(originalImage);
 
-    // PREMIUM PROMPT: Focuses on professional color grading and LUT-style aesthetics
-    const prompt = `ACT AS A MASTER COLORIST. 
-Apply a professional cinematic grade: "${filterPrompt}"
-Technical Guidelines:
-- Utilize advanced Tonal Mapping and Film Print Emulation (FPE).
-- Enhance micro-contrast without introduced artifacts or noise.
-- Apply professional-grade color science (Rec.2020 color space fidelity).
-- Maintain the original composition while elevating the "vibe" to a 70mm IMAX aesthetic.
+    const prompt = `ACT AS A MASTER COLORIST. Apply cinematic grade: "${filterPrompt}"
+Guidelines: Advanced Tonal Mapping, Rec.2020 fidelity, 70mm IMAX aesthetic.
 Output: Return ONLY the final color-graded image.`;
 
     const response = await generateWithFallback(ai, {
@@ -99,9 +126,6 @@ Output: Return ONLY the final color-graded image.`;
     return handleApiResponse(response, 'filter');
 };
 
-/**
- * GENERATE ADJUSTED IMAGE - OPTICAL FIDELITY
- */
 export const generateAdjustedImage = async (
     originalImage: File,
     adjustmentPrompt: string,
@@ -110,14 +134,8 @@ export const generateAdjustedImage = async (
     const ai = new GoogleGenAI({ apiKey });
     const originalImagePart = await fileToPart(originalImage);
 
-    // PREMIUM PROMPT: Focuses on HDR range and dynamic contrast
-    const prompt = `ACT AS A HIGH-END DIGITAL RETOUCHER.
-Adjustment Request: "${adjustmentPrompt}"
-Technical Standards:
-- Optimize dynamic range (HDR) while preserving highlight and shadow detail.
-- Ensure 100% realistic texture retention; do not "soften" the image unless requested.
-- Apply global luminance corrections with professional-grade smoothness.
-- Preserve the exact aspect ratio and 2K/4K resolution clarity.
+    const prompt = `ACT AS A HIGH-END DIGITAL RETOUCHER. Adjustment: "${adjustmentPrompt}"
+Standards: Preserve 100% realistic texture, HDR detail retention, 4K clarity.
 Output: Return ONLY the adjusted master file.`;
 
     const response = await generateWithFallback(ai, {
@@ -126,9 +144,6 @@ Output: Return ONLY the adjusted master file.`;
     return handleApiResponse(response, 'adjustment');
 };
 
-/**
- * GENERATE IMAGE FROM TEXT - THE "ULTRA" GENERATOR
- */
 export const generateImageFromText = async (
     prompt: string,
     aspectRatio: string = '1:1'
@@ -136,16 +151,10 @@ export const generateImageFromText = async (
     const apiKey = getApiKey() || process.env.API_KEY || '';
     const ai = new GoogleGenAI({ apiKey });
 
-    // PREMIUM PROMPT: The "Holy Grail" of generation keywords for Imagen 4
     const fullPrompt = `MASTERPIECE PHOTOGRAPHY: "${prompt}"
-Technical Specifications for Maximum Quality:
-- Style: Photorealistic, shot on 35mm anamorphic lens, f/1.8 aperture.
-- Lighting: Volumetric lighting, global illumination, ray-traced reflections.
-- Detail: Hyper-detailed textures (pores, fabric weave, micro-surface imperfections).
-- Finish: 8k UHD, crispy sharp focus, cinematic bokeh, professional color science.
-- Composition: Golden ratio, award-winning photography standards.
-- Aspect Ratio: ${aspectRatio}.
-Output: Return ONLY the final high-fidelity masterpiece image. No text.`;
+Specs: 35mm anamorphic lens, f/1.8, volumetric lighting, hyper-detailed textures, 8k UHD.
+Aspect Ratio: ${aspectRatio}.
+Output: Return ONLY the high-fidelity masterpiece image. No text.`;
 
     const response = await generateWithFallback(ai, {
         contents: { parts: [{ text: fullPrompt }] },
