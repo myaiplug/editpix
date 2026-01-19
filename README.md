@@ -35,13 +35,6 @@ View your app in AI Studio: https://ai.studio/apps/drive/15K6TLDzwyw2fKXOJrbxVYg
 - **Educational Guide** - Built-in tutorial explaining API keys with links to 5 free providers
 - **Environment Variables** - Configure API keys and passwords via .env.local
 
-### 👑 Admin Mode
-Unlock advanced features with password-protected admin mode:
-- **4 Pro Retouch Presets** - Remove blemishes, whiten teeth, enhance eyes, smooth skin
-- **12 Pro Adjustments** - HDR, portrait retouching, color grading, and more
-- **4 Exclusive Filters** - Cinematic, Renaissance, Cyberpunk, Watercolor Dream
-
-**Admin Password:** `editpix2025admin`
 
 ## Getting Started
 
@@ -113,38 +106,6 @@ Protect your EditPix instance with a password for family testing or limited acce
 3. Users will be prompted to enter the password before accessing the app
 4. Leave `APP_PASSWORD` empty to disable password protection
 
-## Admin Mode
-
-Enable admin mode to access professional-grade presets and tools:
-
-1. Click the **Settings** icon in the header
-2. Scroll to **Admin Mode** section
-3. Click **Enable Admin Mode**
-4. Enter password: `editpix2025admin`
-5. Enjoy enhanced features marked with ★
-
-### Admin Features
-- **Retouch**: Professional skin retouching, blemish removal, teeth whitening
-- **Adjust**: 12 pro-level adjustments including HDR, color grading, lens correction
-- **Filters**: 4 exclusive cinematic and artistic filters
-
-## Using the Manifest Board
-
-The Manifest Board lets you create custom compositions with multiple images and text:
-
-1. Click **Manifest Board** button in the header
-2. Add images (up to 20) using the "Add Image" button
-3. Add text by clicking "Add Text" and typing your message
-4. Click elements to select and position them
-5. Use **Save** to save your work for later
-6. Use **Load** to resume a saved canvas
-7. Use **Export** to download your composition as PNG
-
-**Tips:**
-- Click and drag elements to reposition them
-- Select elements and click "Delete Selected" to remove them
-- Name your canvas for easy identification when saving
-- Saved canvases are stored in your browser's local storage
 
 ## Security & Privacy
 
