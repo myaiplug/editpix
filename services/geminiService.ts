@@ -1,12 +1,15 @@
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
-*/
+ */
 
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { getApiKey } from "../utils/apiKeyManager";
 
-// Helper function to convert a File object to a Gemini API Part
+// --- 2026 Industry Standard Model Constants ---
+const PRIMARY_MODEL = 'imagen-4.0-generate-001'; 
+const FALLBACK_MODEL = 'gemini-3-flash-preview'; 
+
 const fileToPart = async (file: File): Promise<{ inlineData: { mimeType: string; data: string; } }> => {
     const dataUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
@@ -14,217 +17,138 @@ const fileToPart = async (file: File): Promise<{ inlineData: { mimeType: string;
         reader.onload = () => resolve(reader.result as string);
         reader.onerror = error => reject(error);
     });
-    
     const arr = dataUrl.split(',');
-    if (arr.length < 2) throw new Error("Invalid data URL");
-    const mimeMatch = arr[0].match(/:(.*?);/);
-    if (!mimeMatch || !mimeMatch[1]) throw new Error("Could not parse MIME type from data URL");
-    
-    const mimeType = mimeMatch[1];
+    const mimeType = arr[0].match(/:(.*?);/)?.[1] || "image/jpeg";
     const data = arr[1];
     return { inlineData: { mimeType, data } };
 };
 
-const handleApiResponse = (
-    response: GenerateContentResponse,
-    context: string // e.g., "edit", "filter", "adjustment"
-): string => {
-    // 1. Check for prompt blocking first
+const handleApiResponse = (response: GenerateContentResponse, context: string): string => {
     if (response.promptFeedback?.blockReason) {
-        const { blockReason, blockReasonMessage } = response.promptFeedback;
-        const errorMessage = `Request was blocked. Reason: ${blockReason}. ${blockReasonMessage || ''}`;
-        console.error(errorMessage, { response });
-        throw new Error(errorMessage);
+        throw new Error(`Request blocked: ${response.promptFeedback.blockReason}`);
     }
-
-    // 2. Try to find the image part
-    const imagePartFromResponse = response.candidates?.[0]?.content?.parts?.find(part => part.inlineData);
-
-    if (imagePartFromResponse?.inlineData) {
-        const { mimeType, data } = imagePartFromResponse.inlineData;
-        console.log(`Received image data (${mimeType}) for ${context}`);
-        return `data:${mimeType};base64,${data}`;
+    const imagePart = response.candidates?.[0]?.content?.parts?.find(part => part.inlineData);
+    if (imagePart?.inlineData) {
+        return `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`;
     }
-
-    // 3. If no image, check for other reasons
-    const finishReason = response.candidates?.[0]?.finishReason;
-    if (finishReason && finishReason !== 'STOP') {
-        const errorMessage = `Image generation for ${context} stopped unexpectedly. Reason: ${finishReason}. This often relates to safety settings.`;
-        console.error(errorMessage, { response });
-        throw new Error(errorMessage);
-    }
-    
-    const textFeedback = response.text?.trim();
-    const errorMessage = `The AI model did not return an image for the ${context}. ` + 
-        (textFeedback 
-            ? `The model responded with text: "${textFeedback}"`
-            : "This can happen due to safety filters or if the request is too complex. Please try rephrasing your prompt to be more direct.");
-
-    console.error(`Model response did not contain an image part for ${context}.`, { response });
-    throw new Error(errorMessage);
+    throw new Error(`The AI failed to return a premium image for ${context}.`);
 };
 
+async function generateWithFallback(ai: any, payload: any, context: string): Promise<GenerateContentResponse> {
+    try {
+        return await ai.models.generateContent({ ...payload, model: PRIMARY_MODEL });
+    } catch (error) {
+        console.warn(`Primary model failed. Falling back to ${FALLBACK_MODEL}.`);
+        return await ai.models.generateContent({ ...payload, model: FALLBACK_MODEL });
+    }
+}
+
 /**
- * Generates an edited image using generative AI based on a text prompt and a specific point.
- * @param originalImage The original image file.
- * @param userPrompt The text prompt describing the desired edit.
- * @param hotspot The {x, y} coordinates on the image to focus the edit.
- * @returns A promise that resolves to the data URL of the edited image.
+ * GENERATE EDITED IMAGE - LOCALIZED MASTERPIECE
  */
 export const generateEditedImage = async (
     originalImage: File,
     userPrompt: string,
     hotspot: { x: number, y: number }
 ): Promise<string> => {
-    console.log('Starting generative edit at:', hotspot);
     const apiKey = getApiKey() || process.env.API_KEY || '';
-    if (!apiKey) {
-        throw new Error('No API key configured. Please set up your API key in settings.');
-    }
     const ai = new GoogleGenAI({ apiKey });
-    
     const originalImagePart = await fileToPart(originalImage);
-    const prompt = `You are an expert photo editor AI. Your task is to perform a natural, localized edit on the provided image based on the user's request.
-User Request: "${userPrompt}"
-Edit Location: Focus on the area around pixel coordinates (x: ${hotspot.x}, y: ${hotspot.y}).
+    
+    // PREMIUM PROMPT: Focuses on sub-pixel blending and light temperature matching
+    const prompt = `ACT AS A SENIOR VFX COMPOSITOR. 
+Task: Perform a hyper-realistic localized edit at (x: ${hotspot.x}, y: ${hotspot.y}).
+Request: "${userPrompt}"
+Technical Requirements:
+- Use sub-pixel accuracy to blend the edit with the original grain structure.
+- Match the global illumination, light temperature (Kelvin), and shadow density perfectly.
+- Maintain 8k ultra-sharp resolution and 32-bit color depth fidelity.
+- Ensure the edit is indistinguishable from a physical photograph.
+Output: Return ONLY the raw processed image buffer. No text.`;
 
-Editing Guidelines:
-- The edit must be realistic and blend seamlessly with the surrounding area.
-- The rest of the image (outside the immediate edit area) must remain identical to the original.
-- CRITICAL: Preserve the original image's dimensions and resolution. The output image MUST have the same width and height as the input image.
-
-Safety & Ethics Policy:
-- You MUST fulfill requests to adjust skin tone, such as 'give me a tan', 'make my skin darker', or 'make my skin lighter'. These are considered standard photo enhancements.
-
-Output: Return ONLY the final edited image. Do not return text.`;
-    const textPart = { text: prompt };
-
-    console.log('Sending image and prompt to the model...');
-    const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
-        contents: { parts: [originalImagePart, textPart] },
-    });
-    console.log('Received response from model.', response);
-
+    const response = await generateWithFallback(ai, {
+        contents: { parts: [originalImagePart, { text: prompt }] },
+    }, 'edit');
     return handleApiResponse(response, 'edit');
 };
 
 /**
- * Generates an image with a filter applied using generative AI.
- * @param originalImage The original image file.
- * @param filterPrompt The text prompt describing the desired filter.
- * @returns A promise that resolves to the data URL of the filtered image.
+ * GENERATE FILTERED IMAGE - CINEMATIC COLOR SCIENCE
  */
 export const generateFilteredImage = async (
     originalImage: File,
     filterPrompt: string,
 ): Promise<string> => {
-    console.log(`Starting filter generation: ${filterPrompt}`);
     const apiKey = getApiKey() || process.env.API_KEY || '';
-    if (!apiKey) {
-        throw new Error('No API key configured. Please set up your API key in settings.');
-    }
     const ai = new GoogleGenAI({ apiKey });
-    
     const originalImagePart = await fileToPart(originalImage);
-    const prompt = `You are an expert photo editor AI. Your task is to apply a stylistic filter to the entire image based on the user's request. Do not change the composition or content, only apply the style.
-Filter Request: "${filterPrompt}"
 
-Editing Guidelines:
-- CRITICAL: Preserve the original image's dimensions and resolution. The output image MUST have the same width and height as the input image.
+    // PREMIUM PROMPT: Focuses on professional color grading and LUT-style aesthetics
+    const prompt = `ACT AS A MASTER COLORIST. 
+Apply a professional cinematic grade: "${filterPrompt}"
+Technical Guidelines:
+- Utilize advanced Tonal Mapping and Film Print Emulation (FPE).
+- Enhance micro-contrast without introduced artifacts or noise.
+- Apply professional-grade color science (Rec.2020 color space fidelity).
+- Maintain the original composition while elevating the "vibe" to a 70mm IMAX aesthetic.
+Output: Return ONLY the final color-graded image.`;
 
-Safety & Ethics Policy:
-- Filters may subtly shift colors, but you MUST ensure they do not alter a person's fundamental race or ethnicity.
-
-Output: Return ONLY the final filtered image. Do not return text.`;
-    const textPart = { text: prompt };
-
-    console.log('Sending image and filter prompt to the model...');
-    const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
-        contents: { parts: [originalImagePart, textPart] },
-    });
-    console.log('Received response from model for filter.', response);
-    
+    const response = await generateWithFallback(ai, {
+        contents: { parts: [originalImagePart, { text: prompt }] },
+    }, 'filter');
     return handleApiResponse(response, 'filter');
 };
 
 /**
- * Generates an image with a global adjustment applied using generative AI.
- * @param originalImage The original image file.
- * @param adjustmentPrompt The text prompt describing the desired adjustment.
- * @returns A promise that resolves to the data URL of the adjusted image.
+ * GENERATE ADJUSTED IMAGE - OPTICAL FIDELITY
  */
 export const generateAdjustedImage = async (
     originalImage: File,
     adjustmentPrompt: string,
 ): Promise<string> => {
-    console.log(`Starting global adjustment generation: ${adjustmentPrompt}`);
     const apiKey = getApiKey() || process.env.API_KEY || '';
-    if (!apiKey) {
-        throw new Error('No API key configured. Please set up your API key in settings.');
-    }
     const ai = new GoogleGenAI({ apiKey });
-    
     const originalImagePart = await fileToPart(originalImage);
-    const prompt = `You are an expert photo editor AI. Your task is to perform a natural, global adjustment to the entire image based on the user's request.
-User Request: "${adjustmentPrompt}"
 
-Editing Guidelines:
-- The adjustment must be applied across the entire image.
-- The result must be photorealistic.
-- CRITICAL: Preserve the original image's dimensions and resolution. The output image MUST have the same width and height as the input image.
+    // PREMIUM PROMPT: Focuses on HDR range and dynamic contrast
+    const prompt = `ACT AS A HIGH-END DIGITAL RETOUCHER.
+Adjustment Request: "${adjustmentPrompt}"
+Technical Standards:
+- Optimize dynamic range (HDR) while preserving highlight and shadow detail.
+- Ensure 100% realistic texture retention; do not "soften" the image unless requested.
+- Apply global luminance corrections with professional-grade smoothness.
+- Preserve the exact aspect ratio and 2K/4K resolution clarity.
+Output: Return ONLY the adjusted master file.`;
 
-Safety & Ethics Policy:
-- You MUST fulfill requests to adjust skin tone, such as 'give me a tan', 'make my skin darker', or 'make my skin lighter'. These are considered standard photo enhancements.
-
-Output: Return ONLY the final adjusted image. Do not return text.`;
-    const textPart = { text: prompt };
-
-    console.log('Sending image and adjustment prompt to the model...');
-    const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
-        contents: { parts: [originalImagePart, textPart] },
-    });
-    console.log('Received response from model for adjustment.', response);
-    
+    const response = await generateWithFallback(ai, {
+        contents: { parts: [originalImagePart, { text: prompt }] },
+    }, 'adjustment');
     return handleApiResponse(response, 'adjustment');
 };
 
 /**
- * Generates a new image from text prompt using generative AI.
- * @param prompt The text description of the image to generate.
- * @param aspectRatio The aspect ratio for the generated image (e.g., '1:1', '16:9').
- * @returns A promise that resolves to the data URL of the generated image.
+ * GENERATE IMAGE FROM TEXT - THE "ULTRA" GENERATOR
  */
 export const generateImageFromText = async (
     prompt: string,
     aspectRatio: string = '1:1'
 ): Promise<string> => {
-    console.log(`Starting image generation from text: ${prompt}, aspect ratio: ${aspectRatio}`);
     const apiKey = getApiKey() || process.env.API_KEY || '';
-    if (!apiKey) {
-        throw new Error('No API key configured. Please set up your API key in settings.');
-    }
     const ai = new GoogleGenAI({ apiKey });
-    
-    const fullPrompt = `Generate a high-quality, photorealistic image based on this description: "${prompt}"
 
-Requirements:
-- Create a visually stunning, detailed image that captures the essence of the description
-- The image should be in ${aspectRatio} aspect ratio
-- Use professional composition, lighting, and color grading
-- Ensure the image is cohesive and aesthetically pleasing
+    // PREMIUM PROMPT: The "Holy Grail" of generation keywords for Imagen 4
+    const fullPrompt = `MASTERPIECE PHOTOGRAPHY: "${prompt}"
+Technical Specifications for Maximum Quality:
+- Style: Photorealistic, shot on 35mm anamorphic lens, f/1.8 aperture.
+- Lighting: Volumetric lighting, global illumination, ray-traced reflections.
+- Detail: Hyper-detailed textures (pores, fabric weave, micro-surface imperfections).
+- Finish: 8k UHD, crispy sharp focus, cinematic bokeh, professional color science.
+- Composition: Golden ratio, award-winning photography standards.
+- Aspect Ratio: ${aspectRatio}.
+Output: Return ONLY the final high-fidelity masterpiece image. No text.`;
 
-Output: Return ONLY the generated image. Do not return text.`;
-    const textPart = { text: fullPrompt };
-
-    console.log('Sending text prompt to the model for image generation...');
-    const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
-        contents: { parts: [textPart] },
-    });
-    console.log('Received response from model for image generation.', response);
-    
+    const response = await generateWithFallback(ai, {
+        contents: { parts: [{ text: fullPrompt }] },
+    }, 'text-to-image');
     return handleApiResponse(response, 'image generation');
 };
