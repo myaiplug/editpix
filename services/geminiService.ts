@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { GoogleGenAI, GenerateContentResponse, HarmCategory, HarmBlockThreshold } from "@google/genai";
+import { GoogleGenAI, GenerateContentResponse, GenerateImagesResponse, HarmCategory, HarmBlockThreshold, SafetyFilterLevel } from "@google/genai";
 import { getApiKey } from "../utils/apiKeyManager";
 
 // --- 2026 Industry Standard Model Constants ---
@@ -206,12 +206,13 @@ Output requirements: High-fidelity digital artwork, publication-grade quality, n
 
     try {
         // Try Imagen 4 first using the generateImages API
-        const response = await ai.models.generateImages({
+        const response: GenerateImagesResponse = await ai.models.generateImages({
             model: PRIMARY_MODEL,
             prompt: enhancedPrompt,
             config: {
                 numberOfImages: 1,
                 aspectRatio: aspectRatio,
+                safetyFilterLevel: SafetyFilterLevel.BLOCK_ONLY_HIGH,
             }
         });
 
