@@ -89,7 +89,22 @@ interface GenerateWithFallbackPayload {
     [key: string]: unknown;
 }
 
+const createGoogleGenAIClient = (): GoogleGenAI => {
+    const apiKey = getApiKey() || process.env.API_KEY || '';
+    return new GoogleGenAI({ apiKey });
+};
+
 async function generateWithFallback(
+    ai: GoogleGenAI,
+    payload: GenerateWithFallbackPayload,
+    context: string
+): Promise<GenerateContentResponse> {
+    try {
+        return await ai.models.generateContent({ 
+            ...payload, 
+            model: PRIMARY_MODEL,
+            safetySettings: SAFETY_SETTINGS 
+        });
     } catch (primaryError) {
         console.warn(`Primary model failed for ${context}. Trying fallback: ${FALLBACK_MODEL}`);
         try {
@@ -99,42 +114,23 @@ async function generateWithFallback(
                 safetySettings: SAFETY_SETTINGS 
             });
         } catch (fallbackError) {
-            const primaryMessage =
-const createGoogleGenAIClient = (): GoogleGenAI => {
-    const apiKey = getApiKey() || process.env.API_KEY || '';
-    return new GoogleGenAI({ apiKey });
-};
-
+            const primaryMessage = primaryError instanceof Error ? primaryError.message : 'Unknown primary error';
+            const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : 'Unknown fallback error';
+            const combinedError = new Error(
+                `Both primary and fallback models failed. Primary: ${primaryMessage}. Fallback: ${fallbackMessage}`
+            );
+            (combinedError as any).primaryError = primaryError;
+            (combinedError as any).fallbackError = fallbackError;
+            throw combinedError;
+        }
+    }
+}
 export const generateEditedImage = async (
     originalImage: File,
     userPrompt: string,
     hotspot: { x: number, y: number }
 ): Promise<string> => {
     const ai = createGoogleGenAIClient();
-            (combinedError as any).primaryError = primaryError;
-            (combinedError as any).fallbackError = fallbackError;
-            throw combinedError;
-        }
-            model: PRIMARY_MODEL,
-            safetySettings: SAFETY_SETTINGS 
-        });
-    } catch (error) {
-        console.warn(`Primary model failed for ${context}. Trying fallback: ${FALLBACK_MODEL}`);
-        return await ai.models.generateContent({ 
-            ...payload, 
-            model: FALLBACK_MODEL,
-            safetySettings: SAFETY_SETTINGS 
-        });
-    }
-}
-
-export const generateEditedImage = async (
-    originalImage: File,
-    userPrompt: string,
-    hotspot: { x: number, y: number }
-): Promise<string> => {
-    const apiKey = getApiKey() || process.env.API_KEY || '';
-    const ai = new GoogleGenAI({ apiKey });
     const originalImagePart = await fileToPart(originalImage);
     
     const prompt = `ACT AS A SENIOR VFX COMPOSITOR. 
@@ -155,8 +151,7 @@ export const generateFilteredImage = async (
     originalImage: File,
     filterPrompt: string,
 ): Promise<string> => {
-    const apiKey = getApiKey() || process.env.API_KEY || '';
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = createGoogleGenAIClient();
     const originalImagePart = await fileToPart(originalImage);
 
     const prompt = `ACT AS A MASTER COLORIST. Apply cinematic grade: "${filterPrompt}"
@@ -173,8 +168,7 @@ export const generateAdjustedImage = async (
     originalImage: File,
     adjustmentPrompt: string,
 ): Promise<string> => {
-    const apiKey = getApiKey() || process.env.API_KEY || '';
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = createGoogleGenAIClient();
     const originalImagePart = await fileToPart(originalImage);
 
     const prompt = `ACT AS A HIGH-END DIGITAL RETOUCHER. Adjustment: "${adjustmentPrompt}"
@@ -191,16 +185,65 @@ export const generateImageFromText = async (
     prompt: string,
     aspectRatio: string = '1:1'
 ): Promise<string> => {
-    const apiKey = getApiKey() || process.env.API_KEY || '';
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = createGoogleGenAIClient();
 
-    const fullPrompt = `MASTERPIECE PHOTOGRAPHY: "${prompt}"
+    // Enhanced prompt for highest quality logo/image generation
+    const enhancedPrompt = `Professional masterpiece quality: ${prompt}
+Technical specifications: Ultra-high resolution, crisp detail, perfect clarity, professional lighting, magazine-quality finish.
+Style guidance: Clean, polished, production-ready, visually stunning, commercially viable.
+Output requirements: High-fidelity digital artwork, publication-grade quality, no artifacts or defects.`;
+
+    try {
+        // Try Imagen 4 first using the generateImages API
+        const response = await ai.models.generateImages({
+            model: PRIMARY_MODEL,
+            prompt: enhancedPrompt,
+            numberOfImages: 1,
+            aspectRatio: aspectRatio,
+            safetySettings: SAFETY_SETTINGS
+        });
+
+        // Extract image data from Imagen 4 response
+        if (response.generatedImages && response.generatedImages.length > 0) {
+            const imageData = response.generatedImages[0];
+            
+            // Check if we have image data
+            if (imageData.image) {
+                // The image data is typically provided as a Blob or base64
+                // Convert to data URL format
+                if (typeof imageData.image === 'string') {
+                    // If it's already a base64 string
+                    return imageData.image.startsWith('data:') 
+                        ? imageData.image 
+                        : `data:image/png;base64,${imageData.image}`;
+                } else if (imageData.image instanceof Blob) {
+                    // Convert Blob to base64 data URL
+                    return await new Promise<string>((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result as string);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(imageData.image as Blob);
+                    });
+                }
+            }
+        }
+        
+        throw new Error("Imagen 4 did not return valid image data");
+    } catch (imagenError) {
+        // Fallback to Gemini using generateContent for text-to-image
+        console.warn(`Imagen model failed. Trying Gemini fallback: ${FALLBACK_MODEL}`, imagenError);
+        
+        const fallbackPrompt = `MASTERPIECE PHOTOGRAPHY: "${prompt}"
 Specs: 35mm anamorphic lens, f/1.8, volumetric lighting, hyper-detailed textures, 8k UHD.
 Aspect Ratio: ${aspectRatio}.
 Output: Return ONLY the high-fidelity masterpiece image. No text.`;
 
-    const response = await generateWithFallback(ai, {
-        contents: { parts: [{ text: fullPrompt }] },
-    }, 'text-to-image');
-    return handleApiResponse(response, 'image generation');
+        const response = await ai.models.generateContent({
+            model: FALLBACK_MODEL,
+            contents: { parts: [{ text: fallbackPrompt }] },
+            safetySettings: SAFETY_SETTINGS
+        });
+        
+        return handleApiResponse(response, 'image generation');
+    }
 };
