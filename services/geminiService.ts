@@ -85,7 +85,8 @@ const handleApiResponse = (response: GenerateContentResponse, context: string): 
 
 interface GenerateWithFallbackPayload {
     model?: string;
-    safetySettings?: typeof SAFETY_SETTINGS;
+    contents?: any;
+    config?: any;
     [key: string]: unknown;
 }
 
@@ -99,20 +100,30 @@ async function generateWithFallback(
     payload: GenerateWithFallbackPayload,
     context: string
 ): Promise<GenerateContentResponse> {
+    const { contents, config = {}, ...rest } = payload;
+    
     try {
         return await ai.models.generateContent({ 
-            ...payload, 
             model: PRIMARY_MODEL,
-            safetySettings: SAFETY_SETTINGS 
-        });
+            contents: contents,
+            config: {
+                ...config,
+                safetySettings: SAFETY_SETTINGS
+            },
+            ...rest
+        } as any);
     } catch (primaryError) {
         console.warn(`Primary model failed for ${context}. Trying fallback: ${FALLBACK_MODEL}`);
         try {
             return await ai.models.generateContent({ 
-                ...payload, 
                 model: FALLBACK_MODEL,
-                safetySettings: SAFETY_SETTINGS 
-            });
+                contents: contents,
+                config: {
+                    ...config,
+                    safetySettings: SAFETY_SETTINGS
+                },
+                ...rest
+            } as any);
         } catch (fallbackError) {
             const primaryMessage = primaryError instanceof Error ? primaryError.message : 'Unknown primary error';
             const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : 'Unknown fallback error';
@@ -198,9 +209,10 @@ Output requirements: High-fidelity digital artwork, publication-grade quality, n
         const response = await ai.models.generateImages({
             model: PRIMARY_MODEL,
             prompt: enhancedPrompt,
-            numberOfImages: 1,
-            aspectRatio: aspectRatio,
-            safetySettings: SAFETY_SETTINGS
+            config: {
+                numberOfImages: 1,
+                aspectRatio: aspectRatio,
+            }
         });
 
         // Extract image data from Imagen 4 response
@@ -209,21 +221,20 @@ Output requirements: High-fidelity digital artwork, publication-grade quality, n
             
             // Check if we have image data
             if (imageData.image) {
-                // The image data is typically provided as a Blob or base64
-                // Convert to data URL format
-                if (typeof imageData.image === 'string') {
-                    // If it's already a base64 string
-                    return imageData.image.startsWith('data:') 
-                        ? imageData.image 
-                        : `data:image/png;base64,${imageData.image}`;
-                } else if (imageData.image instanceof Blob) {
-                    // Convert Blob to base64 data URL
-                    return await new Promise<string>((resolve, reject) => {
-                        const reader = new FileReader();
-                        reader.onloadend = () => resolve(reader.result as string);
-                        reader.onerror = reject;
-                        reader.readAsDataURL(imageData.image as Blob);
-                    });
+                // Handle GCS URI
+                if (imageData.image.gcsUri) {
+                    throw new Error("GCS URI response not supported. Please configure for inline image data.");
+                }
+                
+                // Handle base64 imageBytes
+                if (imageData.image.imageBytes) {
+                    const mimeType = imageData.image.mimeType || "image/png";
+                    const imageBytes = imageData.image.imageBytes;
+                    // Check if it already has data: prefix
+                    if (imageBytes.startsWith('data:')) {
+                        return imageBytes;
+                    }
+                    return `data:${mimeType};base64,${imageBytes}`;
                 }
             }
         }
@@ -241,7 +252,9 @@ Output: Return ONLY the high-fidelity masterpiece image. No text.`;
         const response = await ai.models.generateContent({
             model: FALLBACK_MODEL,
             contents: { parts: [{ text: fallbackPrompt }] },
-            safetySettings: SAFETY_SETTINGS
+            config: {
+                safetySettings: SAFETY_SETTINGS
+            }
         });
         
         return handleApiResponse(response, 'image generation');
