@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { GoogleGenAI, GenerateContentResponse, HarmCategory, HarmBlockThreshold } from "@google/genai";
+import { GoogleGenAI, GenerateContentResponse, GenerateImagesResponse, HarmCategory, HarmBlockThreshold, SafetyFilterLevel } from "@google/genai";
 import { getApiKey } from "../utils/apiKeyManager";
 
 // --- 2026 Industry Standard Model Constants ---
@@ -85,56 +85,63 @@ const handleApiResponse = (response: GenerateContentResponse, context: string): 
 
 interface GenerateWithFallbackPayload {
     model?: string;
-    safetySettings?: typeof SAFETY_SETTINGS;
+    contents?: any;
+    config?: any;
     [key: string]: unknown;
 }
 
-async function generateWithFallback(
-    } catch (primaryError) {
-        console.warn(`Primary model failed for ${context}. Trying fallback: ${FALLBACK_MODEL}`);
-        try {
-            return await ai.models.generateContent({ 
-                ...payload, 
-                model: FALLBACK_MODEL,
-                safetySettings: SAFETY_SETTINGS 
-            });
-        } catch (fallbackError) {
-            const primaryMessage =
 const createGoogleGenAIClient = (): GoogleGenAI => {
     const apiKey = getApiKey() || process.env.API_KEY || '';
     return new GoogleGenAI({ apiKey });
 };
 
+async function generateWithFallback(
+    ai: GoogleGenAI,
+    payload: GenerateWithFallbackPayload,
+    context: string
+): Promise<GenerateContentResponse> {
+    const { contents, config = {}, ...rest } = payload;
+    
+    try {
+        return await ai.models.generateContent({ 
+            model: PRIMARY_MODEL,
+            contents: contents,
+            config: {
+                ...config,
+                safetySettings: SAFETY_SETTINGS
+            },
+            ...rest
+        } as any);
+    } catch (primaryError) {
+        console.warn(`Primary model failed for ${context}. Trying fallback: ${FALLBACK_MODEL}`);
+        try {
+            return await ai.models.generateContent({ 
+                model: FALLBACK_MODEL,
+                contents: contents,
+                config: {
+                    ...config,
+                    safetySettings: SAFETY_SETTINGS
+                },
+                ...rest
+            } as any);
+        } catch (fallbackError) {
+            const primaryMessage = primaryError instanceof Error ? primaryError.message : 'Unknown primary error';
+            const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : 'Unknown fallback error';
+            const combinedError = new Error(
+                `Both primary and fallback models failed. Primary: ${primaryMessage}. Fallback: ${fallbackMessage}`
+            );
+            (combinedError as any).primaryError = primaryError;
+            (combinedError as any).fallbackError = fallbackError;
+            throw combinedError;
+        }
+    }
+}
 export const generateEditedImage = async (
     originalImage: File,
     userPrompt: string,
     hotspot: { x: number, y: number }
 ): Promise<string> => {
     const ai = createGoogleGenAIClient();
-            (combinedError as any).primaryError = primaryError;
-            (combinedError as any).fallbackError = fallbackError;
-            throw combinedError;
-        }
-            model: PRIMARY_MODEL,
-            safetySettings: SAFETY_SETTINGS 
-        });
-    } catch (error) {
-        console.warn(`Primary model failed for ${context}. Trying fallback: ${FALLBACK_MODEL}`);
-        return await ai.models.generateContent({ 
-            ...payload, 
-            model: FALLBACK_MODEL,
-            safetySettings: SAFETY_SETTINGS 
-        });
-    }
-}
-
-export const generateEditedImage = async (
-    originalImage: File,
-    userPrompt: string,
-    hotspot: { x: number, y: number }
-): Promise<string> => {
-    const apiKey = getApiKey() || process.env.API_KEY || '';
-    const ai = new GoogleGenAI({ apiKey });
     const originalImagePart = await fileToPart(originalImage);
     
     const prompt = `ACT AS A SENIOR VFX COMPOSITOR. 
@@ -155,8 +162,7 @@ export const generateFilteredImage = async (
     originalImage: File,
     filterPrompt: string,
 ): Promise<string> => {
-    const apiKey = getApiKey() || process.env.API_KEY || '';
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = createGoogleGenAIClient();
     const originalImagePart = await fileToPart(originalImage);
 
     const prompt = `ACT AS A MASTER COLORIST. Apply cinematic grade: "${filterPrompt}"
@@ -173,8 +179,7 @@ export const generateAdjustedImage = async (
     originalImage: File,
     adjustmentPrompt: string,
 ): Promise<string> => {
-    const apiKey = getApiKey() || process.env.API_KEY || '';
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = createGoogleGenAIClient();
     const originalImagePart = await fileToPart(originalImage);
 
     const prompt = `ACT AS A HIGH-END DIGITAL RETOUCHER. Adjustment: "${adjustmentPrompt}"
@@ -191,16 +196,68 @@ export const generateImageFromText = async (
     prompt: string,
     aspectRatio: string = '1:1'
 ): Promise<string> => {
-    const apiKey = getApiKey() || process.env.API_KEY || '';
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = createGoogleGenAIClient();
 
-    const fullPrompt = `MASTERPIECE PHOTOGRAPHY: "${prompt}"
+    // Enhanced prompt for highest quality logo/image generation
+    const enhancedPrompt = `Professional masterpiece quality: ${prompt}
+Technical specifications: Ultra-high resolution, crisp detail, perfect clarity, professional lighting, magazine-quality finish.
+Style guidance: Clean, polished, production-ready, visually stunning, commercially viable.
+Output requirements: High-fidelity digital artwork, publication-grade quality, no artifacts or defects.`;
+
+    try {
+        // Try Imagen 4 first using the generateImages API
+        const response: GenerateImagesResponse = await ai.models.generateImages({
+            model: PRIMARY_MODEL,
+            prompt: enhancedPrompt,
+            config: {
+                numberOfImages: 1,
+                aspectRatio: aspectRatio,
+                safetyFilterLevel: SafetyFilterLevel.BLOCK_ONLY_HIGH,
+            }
+        });
+
+        // Extract image data from Imagen 4 response
+        if (response.generatedImages && response.generatedImages.length > 0) {
+            const imageData = response.generatedImages[0];
+            
+            // Check if we have image data
+            if (imageData.image) {
+                // Handle GCS URI
+                if (imageData.image.gcsUri) {
+                    throw new Error("GCS URI response not supported. Please configure for inline image data.");
+                }
+                
+                // Handle base64 imageBytes
+                if (imageData.image.imageBytes) {
+                    const mimeType = imageData.image.mimeType || "image/png";
+                    const imageBytes = imageData.image.imageBytes;
+                    // Check if it already has data: prefix
+                    if (imageBytes.startsWith('data:')) {
+                        return imageBytes;
+                    }
+                    return `data:${mimeType};base64,${imageBytes}`;
+                }
+            }
+        }
+        
+        throw new Error("Imagen 4 did not return valid image data");
+    } catch (imagenError) {
+        // Fallback to Gemini using generateContent for text-to-image
+        console.warn(`Imagen model failed. Trying Gemini fallback: ${FALLBACK_MODEL}`, imagenError);
+        
+        const fallbackPrompt = `MASTERPIECE PHOTOGRAPHY: "${prompt}"
 Specs: 35mm anamorphic lens, f/1.8, volumetric lighting, hyper-detailed textures, 8k UHD.
 Aspect Ratio: ${aspectRatio}.
 Output: Return ONLY the high-fidelity masterpiece image. No text.`;
 
-    const response = await generateWithFallback(ai, {
-        contents: { parts: [{ text: fullPrompt }] },
-    }, 'text-to-image');
-    return handleApiResponse(response, 'image generation');
+        const response = await ai.models.generateContent({
+            model: FALLBACK_MODEL,
+            contents: { parts: [{ text: fallbackPrompt }] },
+            config: {
+                safetySettings: SAFETY_SETTINGS
+            }
+        });
+        
+        return handleApiResponse(response, 'image generation');
+    }
 };
