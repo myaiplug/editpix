@@ -7,9 +7,9 @@ import { GoogleGenAI, GenerateContentResponse, HarmCategory, HarmBlockThreshold 
 import { getApiKey } from "../utils/apiKeyManager";
 
 // --- 2026 Industry Standard Model Constants ---
-export const PRIMARY_MODEL = 'imagen-4.0-generate-001'; 
-export const FALLBACK_MODEL = 'gemini-3-flash-preview'; 
-export const NANO_MODEL = 'gemini-3-pro-image'; // "Gemini 3 Pro Image" aka nanobannana
+export const PRIMARY_MODEL = 'gemini-3-pro-image'; 
+export const FALLBACK_MODEL = 'imagen-4.0-generate-001'; 
+export const NANO_MODEL = 'nanobannana-1'; // "NanoBannana" aka nanobannana
 
 const SAFETY_SETTINGS = [
     { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
@@ -71,23 +71,44 @@ const handleApiResponse = (response: GenerateContentResponse, context: string): 
 
 async function generateWithModel(ai: any, payload: any, model: string, context: string): Promise<GenerateContentResponse> {
     try {
-        return await ai.models.generateContent({ 
-            ...payload, 
-            model: model,
-            safetySettings: SAFETY_SETTINGS 
+        return await ai.models.generateContent({
+            ...payload,
+            model,
+            safetySettings: SAFETY_SETTINGS
         });
     } catch (error) {
+        const rawMessage = error instanceof Error ? error.message : String(error);
         console.error(`Model ${model} failed for ${context}:`, error);
-        throw error;
+        throw new Error(`Model ${model} failed for ${context}: ${rawMessage}`);
     }
 }
 
 async function generateWithFallback(ai: any, payload: any, context: string): Promise<GenerateContentResponse> {
     try {
+        // First, try the primary (e.g. Imagen). If it fails with a clear API /
+        // permission error, surface that directly instead of silently hiding it
+        // behind a fallback response.
         return await generateWithModel(ai, payload, PRIMARY_MODEL, context);
-    } catch (error) {
+    } catch (primaryError) {
+        const message = primaryError instanceof Error ? primaryError.message : String(primaryError);
+
+        // If it's an auth/permission/quota/model error, do NOT fall back – show it.
+        if (/PERMISSION|UNAUTHENTICATED|UNAUTHORIZED|API key|quota|NOT_FOUND|model/i.test(message)) {
+            throw primaryError instanceof Error
+                ? primaryError
+                : new Error(message);
+        }
+
         console.warn(`Primary model failed for ${context}. Trying fallback: ${FALLBACK_MODEL}`);
-        return await generateWithModel(ai, payload, FALLBACK_MODEL, context);
+
+        try {
+            return await generateWithModel(ai, payload, FALLBACK_MODEL, context);
+        } catch (fallbackError) {
+            const fbMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+            throw new Error(
+                `Both models failed for ${context}. Primary: ${message}. Fallback: ${fbMessage}`
+            );
+        }
     }
 }
 

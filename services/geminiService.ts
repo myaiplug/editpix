@@ -59,19 +59,62 @@ const handleApiResponse = (response: GenerateContentResponse, context: string): 
     }
 
     // 3. Extract Image Data
-    const imagePart = candidate?.content?.parts?.find(part => part.inlineData);
-    if (imagePart?.inlineData) {
-        return `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`;
+    const imagePart = candidate?.content?.parts?.find(part => (part as any).inlineData);
+    if (imagePart && (imagePart as any).inlineData) {
+        const inlineData = (imagePart as any).inlineData as { mimeType?: string; data: string };
+        const mimeType = inlineData.mimeType || "image/png";
+        return `data:${mimeType};base64,${inlineData.data}`;
     }
 
-    // 4. Fallback for Empty Responses
+    // 4. If we got a textual response instead of an image, surface it to the user for clarity
+    const textPart = candidate?.content?.parts?.find(part => (part as any).text);
+    if (textPart && (textPart as any).text) {
+        const text = (textPart as any).text as string;
+        const preview = text.length > 240 ? `${text.slice(0, 240)}...` : text;
+        throw new Error(
+            `The AI returned an explanation instead of an image for ${context}. ` +
+            `This often means the configured model does not support image editing/generation with your API key. ` +
+            `Model message: "${preview}"`
+        );
+    }
+
+    // 5. Fallback for completely empty responses
+    console.error("GenAI response contained no image or text parts", { context, response });
     throw new Error(`System Error: The AI confirmed completion but did not return image data for ${context}.`);
 };
 
-async function generateWithFallback(ai: any, payload: any, context: string): Promise<GenerateContentResponse> {
-    try {
-        return await ai.models.generateContent({ 
-            ...payload, 
+interface GenerateWithFallbackPayload {
+    model?: string;
+    safetySettings?: typeof SAFETY_SETTINGS;
+    [key: string]: unknown;
+}
+
+async function generateWithFallback(
+    } catch (primaryError) {
+        console.warn(`Primary model failed for ${context}. Trying fallback: ${FALLBACK_MODEL}`);
+        try {
+            return await ai.models.generateContent({ 
+                ...payload, 
+                model: FALLBACK_MODEL,
+                safetySettings: SAFETY_SETTINGS 
+            });
+        } catch (fallbackError) {
+            const primaryMessage =
+const createGoogleGenAIClient = (): GoogleGenAI => {
+    const apiKey = getApiKey() || process.env.API_KEY || '';
+    return new GoogleGenAI({ apiKey });
+};
+
+export const generateEditedImage = async (
+    originalImage: File,
+    userPrompt: string,
+    hotspot: { x: number, y: number }
+): Promise<string> => {
+    const ai = createGoogleGenAIClient();
+            (combinedError as any).primaryError = primaryError;
+            (combinedError as any).fallbackError = fallbackError;
+            throw combinedError;
+        }
             model: PRIMARY_MODEL,
             safetySettings: SAFETY_SETTINGS 
         });
